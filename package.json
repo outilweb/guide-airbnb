@@ -1,0 +1,13 @@
+{
+  "name": "guide-airbnb",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "predev": "npm --prefix guide-generator install",
+    "dev": "npm --prefix guide-generator run dev",
+    "build": "npm --prefix guide-generator run build",
+    "preview": "npm --prefix guide-generator run preview",
+    "postinstall": "npm --prefix guide-generator install"
+  }
+}
+

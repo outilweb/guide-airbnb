@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer rounded square -->
+  <rect x="4" y="4" width="56" height="56" rx="12" ry="12" fill="#ffffff" stroke="#0D3B4C" stroke-width="4"/>
+
+  <!-- Back cover shadow -->
+  <path d="M16 46V22c0-1.1.9-2 2-2h12c7 0 12-1 16 2v24H16z" fill="#2A88A8" opacity="0.35"/>
+
+  <!-- Left page -->
+  <path d="M18 44V24c0-1.1.9-2 2-2 6 0 11 1.8 14 5v19c-3-3.2-8-5-14-5-1.1 0-2-.9-2-2z" fill="#F7FAFC" stroke="#0D3B4C" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Right page -->
+  <path d="M46 44V24c0-1.1-.9-2-2-2-6 0-11 1.8-14 5v19c3-3.2 8-5 14-5 1.1 0 2-.9 2-2z" fill="#F7FAFC" stroke="#0D3B4C" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Bottom book shape (closed spine) -->
+  <path d="M20 44c8 0 12 3 12 3s4-3 12-3" fill="#2A88A8"/>
+  <path d="M20 44c8 0 12 3 12 3s4-3 12-3" stroke="#0D3B4C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Ribbon -->
+  <path d="M28.5 45.5v6l3.5-2 3.5 2v-6" fill="#F5A524" stroke="#0D3B4C" stroke-width="2" stroke-linejoin="round"/>
+</svg>
+
