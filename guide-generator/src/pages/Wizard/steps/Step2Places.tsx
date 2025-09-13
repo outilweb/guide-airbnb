@@ -1,15 +1,27 @@
+import { useEffect } from 'react'
 import Card from '../../../components/Card'
 import type { Guide, Place } from '../../../types'
 import { Input, Label, Select, Textarea } from '../../../components/FormField'
 
 export default function Step2Places({ guide, onChange }: { guide: Guide; onChange: (g: Guide) => void }) {
   const places = guide.places || []
-  const canAddMore = places.length < 3
   const update = (idx: number, patch: Partial<Place>) => {
     const next = [...places]
     next[idx] = { ...next[idx], ...patch }
     onChange({ ...guide, places: next })
   }
+
+  // Ensure at least one recommendation exists so the owner sees "Reco 1" fields by default
+  useEffect(() => {
+    if (!guide.places || guide.places.length === 0) {
+      onChange({
+        ...guide,
+        places: [{ id: crypto.randomUUID(), name: '', category: 'Restaurant' }],
+      })
+    }
+    // We intentionally run this only on mount for this step
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
     <div className="space-y-4">
       {places.map((p: Place, idx: number) => (
@@ -54,16 +66,13 @@ export default function Step2Places({ guide, onChange }: { guide: Guide; onChang
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className={`text-sm ${canAddMore ? 'text-[var(--accent)]' : 'text-gray-400 cursor-not-allowed'}`}
-          disabled={!canAddMore}
+          className={`text-sm text-[var(--accent)]`}
           onClick={() => {
-            if (!canAddMore) return
             onChange({ ...guide, places: [...places, { id: crypto.randomUUID(), name: '', category: 'Restaurant' }] })
           }}
         >
           + Ajouter un lieu
         </button>
-        {!canAddMore && <span className="text-xs text-gray-500">Limite atteinte: 3 recommandations maximum.</span>}
       </div>
     </div>
   )
