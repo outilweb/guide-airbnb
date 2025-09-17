@@ -1,18 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import Card from '../components/Card'
-import type { Guide } from '../types'
+import type { Guide, PublishedGuide } from '../types'
 import { loadDraft, publishGuide } from '../utils/storage'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import LeafletMap from '../components/LeafletMap'
 import { publicGuideUrl } from '../utils/url'
 import { formatPhoneFR, formatTimeDisplay } from '../utils/format'
 import { BRAND_URL } from '../config'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Preview() {
   const [guide, setGuide] = useState<Guide | null>(null)
   const navigate = useNavigate()
+  const { owner, login, register } = useAuth()
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('register')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   useEffect(() => setGuide(loadDraft()), [])
+
+  useEffect(() => {
+    if (guide?.ownerEmail && !email) setEmail(guide.ownerEmail)
+  }, [guide?.ownerEmail])
+
+  useEffect(() => {
+    if (guide?.ownerId) setAuthMode('login')
+  }, [guide?.ownerId])
+
+  useEffect(() => {
+    if (!guide?.guideId || !owner?.id) return
+    if (guide.ownerId === owner.id) return
+    const updated = publishGuide(guide, owner)
+    setGuide(updated)
+  }, [guide?.guideId, guide?.ownerId, owner])
 
   const themeVars = useMemo(() => guide ? ({
     ['--primary' as any]: guide.theme.primary,
@@ -22,7 +45,10 @@ export default function Preview() {
   }) : undefined, [guide])
 
   const isPublished = !!guide?.guideId
-  const guideUrl = useMemo(() => guide?.guideId ? publicGuideUrl(guide.guideId) : '', [guide])
+  const guideUrl = useMemo(() => {
+    if (!guide?.guideId) return ''
+    return publicGuideUrl(guide as PublishedGuide, { includeShare: true })
+  }, [guide])
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
@@ -68,6 +94,26 @@ export default function Preview() {
 
     return res
   }, [guide])
+
+  const handleAuthSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAuthError(null)
+    setSubmitting(true)
+    try {
+      if (authMode === 'register') {
+        await register(email, password)
+      } else {
+        await login(email, password)
+      }
+      setEmail('')
+      setPassword('')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Action impossible'
+      setAuthError(message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (!guide) return <div className="max-w-5xl mx-auto px-4 py-6">Aucun brouillon trouvé.</div>
 
@@ -291,7 +337,7 @@ export default function Preview() {
                   </p>
                   <button className="btn btn-primary" onClick={() => {
                     if (!guide) return
-                    const published = publishGuide(guide)
+                    const published = publishGuide(guide, owner)
                     setGuide(published)
                     navigate(`/guide/${published.guideId}`)
                   }}>Publier maintenant</button>
@@ -299,6 +345,73 @@ export default function Preview() {
               )}
             </div>
           </Card>
+          {isPublished ? (
+            <Card>
+              {owner && guide.ownerId === owner.id ? (
+                <div className="space-y-3 text-sm text-gray-600 text-left">
+                  <p>
+                    Ce guide est enregistré sur votre compte <span className="font-medium text-gray-800">{owner.email}</span>.
+                  </p>
+                  <Link to="/my-guides" className="btn btn-outline self-start">Accéder à mes guides</Link>
+                </div>
+              ) : (
+                <div className="space-y-3 text-left">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-gray-800">Conservez ce guide</h3>
+                    <p className="text-sm text-gray-600">Créez un compte hôte ou connectez-vous pour retrouver vos guides publiés.</p>
+                  </div>
+                  <form className="space-y-3" onSubmit={handleAuthSubmit}>
+                    <div className="grid gap-2">
+                      <label className="text-xs uppercase text-gray-500" htmlFor="preview-owner-email">Email</label>
+                      <input
+                        id="preview-owner-email"
+                        type="email"
+                        className="input"
+                        required
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="text-xs uppercase text-gray-500" htmlFor="preview-owner-password">Mot de passe</label>
+                      <input
+                        id="preview-owner-password"
+                        type="password"
+                        className="input"
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                      />
+                    </div>
+                    {authError && <div className="text-sm text-red-600">{authError}</div>}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <button type="submit" className="btn btn-primary" disabled={submitting}>
+                        {submitting ? 'Patientez...' : authMode === 'register' ? 'Créer mon compte hôte' : 'Se connecter'}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-sm text-[var(--accent)] hover:underline"
+                        onClick={() => {
+                          setAuthMode((prev) => (prev === 'register' ? 'login' : 'register'))
+                          setAuthError(null)
+                        }}
+                      >
+                        {authMode === 'register' ? 'Déjà un compte ? Se connecter' : 'Créer un compte hôte'}
+                      </button>
+                    </div>
+                  </form>
+                  <p className="text-xs text-gray-500">
+                    {guide.ownerEmail && !owner ? (
+                      <>Ce guide est associé à l'adresse <strong>{guide.ownerEmail}</strong>. Connectez-vous avec cette adresse pour le retrouver.</>
+                    ) : (
+                      <>Vos identifiants sont stockés localement dans votre navigateur.</>
+                    )}
+                  </p>
+                </div>
+              )}
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>

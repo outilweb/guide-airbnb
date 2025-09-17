@@ -1,17 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 // emojis utilisés dans les titres de section
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { loadPublished } from '../utils/storage'
-import type { Guide } from '../types'
+import type { Guide, PublishedGuide } from '../types'
 import LeafletMap from '../components/LeafletMap'
 import Card from '../components/Card'
 import { formatTimeDisplay, formatPhoneFR } from '../utils/format'
 import { BRAND_URL } from '../config'
+import { decodeGuideSharePayload, SHARE_QUERY_PARAM } from '../utils/share'
 
 export default function PublicGuide() {
   const { guideId } = useParams()
+  const [search] = useSearchParams()
   const [guide, setGuide] = useState<Guide | null>(null)
-  useEffect(() => { if (guideId) setGuide(loadPublished(guideId) || null) }, [guideId])
+  useEffect(() => {
+    if (!guideId) return
+    const shareToken = search.get(SHARE_QUERY_PARAM)
+    if (shareToken) {
+      const shared = decodeGuideSharePayload(shareToken)
+      if (shared) {
+        const normalized: PublishedGuide = { ...shared, guideId }
+        setGuide(normalized)
+        return
+      }
+    }
+    setGuide(loadPublished(guideId) || null)
+  }, [guideId, search])
 
   const themeVars = useMemo(() => guide ? ({
     ['--primary' as any]: guide.theme.primary,

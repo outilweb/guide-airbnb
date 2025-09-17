@@ -1,22 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import { publicGuideUrl } from '../utils/url'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import { loadPublished } from '../utils/storage'
-import type { Guide } from '../types'
+import type { Guide, PublishedGuide } from '../types'
 
 export default function PrintQR() {
   const { guideId } = useParams()
   const [search] = useSearchParams()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
-  const url = guideId ? publicGuideUrl(guideId) : ''
   const [guide, setGuide] = useState<Guide | null>(null)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
 
   useEffect(() => { if (!guideId) navigate('/'); else setGuide(loadPublished(guideId)) }, [guideId])
+
+  const url = useMemo(() => {
+    if (!guide?.guideId) return ''
+    return publicGuideUrl(guide as PublishedGuide, { includeShare: true })
+  }, [guide])
 
   // If URL contains ?auto=1, open print dialog automatically once mounted
   useEffect(() => {

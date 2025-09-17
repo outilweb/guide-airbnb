@@ -1,7 +1,9 @@
 import { Link, Outlet } from 'react-router-dom'
 import { BRAND_URL } from './config'
+import { useAuth } from './contexts/AuthContext'
 
 export default function App() {
+  const { owner, logout } = useAuth()
   return (
     <div className="min-h-full flex flex-col">
       <header className="bg-white/90 backdrop-blur border-b">
@@ -16,7 +18,15 @@ export default function App() {
               <Link to="/my-guides" className="hover:text-gray-900">Mes guides</Link>
               <a href="#" className="hover:text-gray-900">Support</a>
             </nav>
-            <div className="text-sm flex gap-2">
+            <div className="text-sm flex items-center gap-2">
+              {owner ? (
+                <>
+                  <span className="hidden sm:inline text-gray-600">{owner.email}</span>
+                  <button type="button" className="btn btn-ghost" onClick={logout}>Se déconnecter</button>
+                </>
+              ) : (
+                <Link to="/my-guides" className="btn btn-ghost">Se connecter</Link>
+              )}
               <Link to="/wizard" className="btn btn-primary">Créer mon guide</Link>
               <a href="#/guide/demo" className="btn btn-outline">Voir la démo</a>
             </div>

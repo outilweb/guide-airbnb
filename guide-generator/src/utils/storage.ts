@@ -1,4 +1,4 @@
-import type { Guide } from '../types'
+import type { Guide, Owner, PublishedGuide } from '../types'
 
 const DRAFT_KEY = 'guide-draft'
 const PUB_PREFIX = 'guide:'
@@ -14,10 +14,19 @@ export function saveDraft(guide: Guide) {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(updated))
 }
 
-export function publishGuide(guide: Guide): Guide {
+export function publishGuide(guide: Guide, owner?: Owner | null): Guide {
   const guideId = guide.guideId ?? crypto.randomUUID()
   const now = Date.now()
-  const finalized: Guide = { ...guide, guideId, createdAt: guide.createdAt ?? now, updatedAt: now }
+  const ownerId = owner?.id ?? guide.ownerId
+  const ownerEmail = owner?.email ?? guide.ownerEmail
+  const finalized: Guide = {
+    ...guide,
+    guideId,
+    ownerId,
+    ownerEmail,
+    createdAt: guide.createdAt ?? now,
+    updatedAt: now,
+  }
   localStorage.setItem(`${PUB_PREFIX}${guideId}`, JSON.stringify(finalized))
   localStorage.setItem(DRAFT_KEY, JSON.stringify(finalized))
   return finalized
@@ -29,8 +38,8 @@ export function loadPublished(guideId: string): Guide | null {
   try { return JSON.parse(raw) as Guide } catch { return null }
 }
 
-export function listPublishedGuides(): Guide[] {
-  const guides: Guide[] = []
+export function listPublishedGuides(filter?: { ownerId?: string; ownerEmail?: string }): PublishedGuide[] {
+  const guides: PublishedGuide[] = []
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i)
     if (!key || !key.startsWith(PUB_PREFIX)) continue
@@ -38,7 +47,14 @@ export function listPublishedGuides(): Guide[] {
     if (!raw) continue
     try {
       const parsed = JSON.parse(raw) as Guide
-      guides.push(parsed)
+      if (!parsed.guideId) continue
+      if (parsed.guideId === 'demo') continue
+      if (filter?.ownerId && parsed.ownerId !== filter.ownerId) {
+        if (!(filter.ownerEmail && parsed.ownerEmail === filter.ownerEmail)) continue
+      } else if (filter?.ownerEmail && parsed.ownerEmail !== filter.ownerEmail) {
+        continue
+      }
+      guides.push(parsed as PublishedGuide)
     } catch {
       /* ignore malformed entries */
     }

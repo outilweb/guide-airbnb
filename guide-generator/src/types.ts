@@ -21,6 +21,17 @@ export type Guide = {
   theme: Theme;
   createdAt: number;
   updatedAt: number;
+  ownerId?: string;
+  ownerEmail?: string;
+};
+
+export type PublishedGuide = Guide & { guideId: string };
+
+export type Owner = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  createdAt: number;
 };
 
 export const defaultTheme: Theme = {
