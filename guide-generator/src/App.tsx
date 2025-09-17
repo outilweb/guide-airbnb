@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router-dom'
+import { BRAND_URL } from './config'
 
 export default function App() {
   return (
@@ -10,9 +11,9 @@ export default function App() {
             <span>Guide générateur</span>
           </Link>
           <div className="flex items-center gap-6">
-            <nav className="hidden sm:flex text-sm gap-6 text-gray-700">
+            <nav className="text-sm flex gap-6 text-gray-700">
               <Link to="/" className="hover:text-gray-900">Accueil</Link>
-              <a href="#" className="hover:text-gray-900">Mes guides</a>
+              <Link to="/my-guides" className="hover:text-gray-900">Mes guides</Link>
               <a href="#" className="hover:text-gray-900">Support</a>
             </nav>
             <div className="text-sm flex gap-2">
@@ -26,7 +27,11 @@ export default function App() {
         <Outlet />
       </main>
       <footer className="bg-gray-100 text-xs text-gray-500 py-4 text-center">
-        © {new Date().getFullYear()} Guide générateur
+        © {new Date().getFullYear()} Guide générateur •
+        <a href={BRAND_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 underline hover:no-underline ml-1">
+          <span>Réalisé par</span>
+          <img src="/logo-guide.svg" alt="Logo" className="inline-block w-4 h-4" />
+        </a>
       </footer>
     </div>
   )

@@ -1,6 +1,6 @@
 export type Rule = { id: string; text: string };
 export type Link = { id: string; label: string; url: string };
-export type PlaceCategory = 'Restaurant' | 'Activité' | 'Commerce essentiel';
+export type PlaceCategory = 'Restaurant' | 'Activité' | 'Commerce essentiel' | 'Lieu' | 'Autre';
 export type Place = { id: string; name: string; category: PlaceCategory; subtype?: string; description?: string; address?: string; mapsUrl?: string; siteUrl?: string };
 export type Contact = { name?: string; phone?: string; email?: string };
 export type Wifi = { ssid?: string; password?: string };

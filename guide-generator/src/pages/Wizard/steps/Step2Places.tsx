@@ -5,6 +5,23 @@ import { Input, Label, Select, Textarea } from '../../../components/FormField'
 
 export default function Step2Places({ guide, onChange }: { guide: Guide; onChange: (g: Guide) => void }) {
   const places = guide.places || []
+  const CATEGORY_OPTIONS: Place['category'][] = ['Restaurant','Activité','Commerce essentiel','Lieu','Autre']
+
+  const examplesFor = (cat: Place['category']) => {
+    switch (cat) {
+      case 'Restaurant':
+        return { name: 'Le Petit Bistrot', subtype: 'Cuisine française traditionnelle', description: 'Ambiance conviviale, prix moyens' }
+      case 'Activité':
+        return { name: "Parc de la Tête d’Or", subtype: 'Parc, Musée, Randonnée', description: 'Idéal en famille, durée ~2h' }
+      case 'Commerce essentiel':
+        return { name: 'Pharmacie de la Gare', subtype: 'Pharmacie, Supermarché, Boulangerie', description: 'Ouvert 8h–20h, à 5 min' }
+      case 'Lieu':
+        return { name: 'Cathédrale Notre‑Dame', subtype: 'Monument, Place, Point de vue', description: 'Site emblématique à proximité' }
+      case 'Autre':
+      default:
+        return { name: 'Marché hebdomadaire', subtype: 'Autre catégorie', description: 'Détail utile pour vos invités' }
+    }
+  }
   const update = (idx: number, patch: Partial<Place>) => {
     const next = [...places]
     next[idx] = { ...next[idx], ...patch }
@@ -24,30 +41,29 @@ export default function Step2Places({ guide, onChange }: { guide: Guide; onChang
   }, [])
   return (
     <div className="space-y-4">
+      <div className="text-sm text-gray-600">
+        Ajouter ici vos meilleurs recommandations afin d'aider vos voyageurs à profiter pleinement de leur séjour
+      </div>
       {places.map((p: Place, idx: number) => (
         <Card key={p.id} title={<span className="flex items-center gap-2">🍽️ Recommandation {idx + 1}</span>}>
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <Label>Nom</Label>
-              <Input placeholder="Le Petit Bistrot" value={p.name} onChange={(e) => update(idx, { name: e.target.value })} />
+              <Input placeholder={examplesFor(p.category).name} value={p.name} onChange={(e) => update(idx, { name: e.target.value })} />
             </div>
             <div>
               <Label>Catégorie</Label>
               <Select value={p.category} onChange={(e) => update(idx, { category: e.target.value as Place['category'] })}>
-                {['Restaurant','Activité','Commerce essentiel'].map((c) => <option key={c} value={c}>{c}</option>)}
+                {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </div>
-            <div>
-              <Label>Type</Label>
-              <Input placeholder="Cuisine française traditionnelle" value={p.subtype ?? ''} onChange={(e) => update(idx, { subtype: e.target.value })} />
-            </div>
-            <div>
-              <Label>Adresse</Label>
-              <Input placeholder="Adresse / distance (ex: 5 min à pied)" value={p.address ?? ''} onChange={(e) => update(idx, { address: e.target.value })} />
-            </div>
+          <div>
+            <Label>Adresse</Label>
+            <Input placeholder="Adresse / distance (ex: 5 min à pied)" value={p.address ?? ''} onChange={(e) => update(idx, { address: e.target.value })} />
+          </div>
             <div className="sm:col-span-2">
               <Label>Description</Label>
-              <Textarea placeholder="Description du lieu..." value={p.description ?? ''} onChange={(e) => update(idx, { description: e.target.value })} />
+              <Textarea placeholder={examplesFor(p.category).description} value={p.description ?? ''} onChange={(e) => update(idx, { description: e.target.value })} />
             </div>
             <div>
               <Label>Lien Google Maps</Label>

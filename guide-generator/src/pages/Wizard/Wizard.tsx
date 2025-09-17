@@ -6,7 +6,7 @@ import Step2Places from './steps/Step2Places'
 import Step4Theme from './steps/Step4Theme'
 import { z } from 'zod'
 import type { Guide } from '../../types'
-import { emptyGuide } from '../../types'
+import { emptyGuide, defaultTheme } from '../../types'
 import { loadDraft, saveDraft } from '../../utils/storage'
 import { useNavigate } from 'react-router-dom'
 
@@ -22,12 +22,13 @@ export default function Wizard() {
   const [saveTick, setSaveTick] = useState(0)
   const navigate = useNavigate()
 
+  // Ensure the site (builder) keeps its default theme while editing
   useEffect(() => {
-    document.documentElement.style.setProperty('--primary', guide.theme.primary)
-    document.documentElement.style.setProperty('--accent', guide.theme.accent)
-    document.documentElement.style.setProperty('--font-heading', guide.theme.fontHeading)
-    document.documentElement.style.setProperty('--font-body', guide.theme.fontBody)
-  }, [guide.theme])
+    document.documentElement.style.setProperty('--primary', defaultTheme.primary)
+    document.documentElement.style.setProperty('--accent', defaultTheme.accent)
+    document.documentElement.style.setProperty('--font-heading', defaultTheme.fontHeading)
+    document.documentElement.style.setProperty('--font-body', defaultTheme.fontBody)
+  }, [])
 
   // Auto-save effect
   useEffect(() => {

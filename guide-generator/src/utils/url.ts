@@ -1,4 +1,6 @@
 export function publicGuideUrl(guideId: string) {
-  const { origin, pathname } = window.location
-  return `${origin}${pathname}#/guide/${guideId}`
+  const base = import.meta.env.BASE_URL ?? '/'
+  const url = new URL(base, window.location.origin)
+  url.hash = `/guide/${guideId}`
+  return url.toString()
 }

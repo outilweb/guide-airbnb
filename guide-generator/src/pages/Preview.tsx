@@ -6,23 +6,24 @@ import { useNavigate } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import LeafletMap from '../components/LeafletMap'
 import { publicGuideUrl } from '../utils/url'
+import { formatPhoneFR, formatTimeDisplay } from '../utils/format'
+import { BRAND_URL } from '../config'
 
 export default function Preview() {
   const [guide, setGuide] = useState<Guide | null>(null)
   const navigate = useNavigate()
   useEffect(() => setGuide(loadDraft()), [])
 
-  useEffect(() => {
-    if (guide) {
-      document.documentElement.style.setProperty('--primary', guide.theme.primary)
-      document.documentElement.style.setProperty('--accent', guide.theme.accent)
-      document.documentElement.style.setProperty('--font-heading', guide.theme.fontHeading)
-      document.documentElement.style.setProperty('--font-body', guide.theme.fontBody)
-    }
-  }, [guide])
+  const themeVars = useMemo(() => guide ? ({
+    ['--primary' as any]: guide.theme.primary,
+    ['--accent' as any]: guide.theme.accent,
+    ['--font-heading' as any]: guide.theme.fontHeading,
+    ['--font-body' as any]: guide.theme.fontBody,
+  }) : undefined, [guide])
 
   const isPublished = !!guide?.guideId
   const guideUrl = useMemo(() => guide?.guideId ? publicGuideUrl(guide.guideId) : '', [guide])
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
   // If explicit and recommendation share the same address, keep only the recommendation(s).
@@ -71,7 +72,7 @@ export default function Preview() {
   if (!guide) return <div className="max-w-5xl mx-auto px-4 py-6">Aucun brouillon trouvé.</div>
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 print-padded">
+    <div className="max-w-5xl mx-auto px-4 py-6 print-padded" style={themeVars as any}>
       <div className={`rounded border px-4 py-3 mb-4 no-print ${isPublished ? 'border-green-300 bg-green-50' : 'border-yellow-300 bg-yellow-50'}`}>
         {isPublished ? '✅ Guide publié – Mode lecture pour vos invités' : 'Brouillon non publié'}
       </div>
@@ -84,61 +85,70 @@ export default function Preview() {
 
       <div className="grid sm:grid-cols-3 gap-4 print-block">
         <div className="sm:col-span-2 space-y-4">
-          <Card>
-            <div className="prose max-w-none">
-              <h1 style={{ color: 'var(--primary)' }}>{guide.title || 'Sans titre'}</h1>
-              {guide.address && <p className="text-gray-600">{guide.address}</p>}
+          {/* Ligne 1: Appartement & adresse | Contact */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Card>
+              <div className="section-title">🏠 Adresse</div>
+              <div className="prose max-w-none">
+                <h1 style={{ color: 'var(--primary)' }}>{guide.title || 'Sans titre'}</h1>
+                {guide.address && <p className="text-gray-600">{guide.address}</p>}
+              </div>
+            </Card>
+            {(guide.contact?.name || guide.contact?.phone || guide.contact?.email) && (
+              <Card>
+                <div className="section-title">👤 Contact</div>
+                <div className="space-y-1 text-sm">
+                  {guide.contact?.name && <div>Nom: {guide.contact.name}</div>}
+                  {guide.contact?.phone && <div>Téléphone: {formatPhoneFR(guide.contact.phone)}</div>}
+                  {guide.contact?.email && <div>Email: {guide.contact.email}</div>}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Ligne 2: Arrivée | Départ */}
+          {(guide.stay?.checkIn || guide.stay?.checkOut) && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {guide.stay?.checkIn && (
+                <Card>
+                  <div className="section-title">🕒 Arrivée</div>
+                  <div className="space-y-1 text-sm">
+                    {guide.stay.checkIn.time && <div>Heure d'arrivée: {formatTimeDisplay(guide.stay.checkIn.time)}</div>}
+                    {guide.stay.checkIn.instructions && <div>Instructions: {guide.stay.checkIn.instructions}</div>}
+                    {guide.stay.checkIn.code && <div>Code d'accès: {guide.stay.checkIn.code}</div>}
+                  </div>
+                </Card>
+              )}
+              {guide.stay?.checkOut && (
+                <Card>
+                  <div className="section-title">🏁 Départ</div>
+                  <div className="space-y-1 text-sm">
+                    {guide.stay.checkOut.time && <div>Heure de départ: {formatTimeDisplay(guide.stay.checkOut.time)}</div>}
+                    {guide.stay.checkOut.checklist && <div>Checklist départ: {guide.stay.checkOut.checklist}</div>}
+                  </div>
+                </Card>
+              )}
             </div>
-          </Card>
-
-          {guide.stay?.checkIn && (
-            <Card>
-              <div className="section-title">🕒 Arrivée</div>
-              <div className="space-y-1 text-sm">
-                {guide.stay.checkIn.time && <div>Heure d'arrivée: {guide.stay.checkIn.time}</div>}
-                {guide.stay.checkIn.instructions && <div>Instructions: {guide.stay.checkIn.instructions}</div>}
-                {guide.stay.checkIn.code && <div>Code d'accès: {guide.stay.checkIn.code}</div>}
-              </div>
-            </Card>
           )}
 
-          {guide.stay?.checkOut && (
-            <Card>
-              <div className="section-title">🏁 Départ</div>
-              <div className="space-y-1 text-sm">
-                {guide.stay.checkOut.time && <div>Heure de départ: {guide.stay.checkOut.time}</div>}
-                {guide.stay.checkOut.checklist && <div>Checklist départ: {guide.stay.checkOut.checklist}</div>}
-              </div>
-            </Card>
-          )}
-
-          {(guide.contact?.name || guide.contact?.phone || guide.contact?.email) && (
-            <Card>
-              <div className="section-title">👤 Contact</div>
-              <div className="space-y-1 text-sm">
-                {guide.contact?.name && <div>Nom: {guide.contact.name}</div>}
-                {guide.contact?.phone && <div>Téléphone: {guide.contact.phone}</div>}
-                {guide.contact?.email && <div>Email: {guide.contact.email}</div>}
-              </div>
-            </Card>
-          )}
-
-          {(guide.wifi?.ssid || guide.wifi?.password) && (
-            <Card>
-              <div className="section-title">📶 Wi‑Fi</div>
-              <div className="text-sm">
-                <p>Nom du réseau (SSID): {guide.wifi?.ssid}</p>
-                {guide.wifi?.password && <p>Mot de passe: {guide.wifi.password}</p>}
-              </div>
-            </Card>
-          )}
-
-          {guide.rules?.length ? (
-            <div className="page-break-before">
-            <Card>
-              <div className="section-title">📋 Règles du logement</div>
-              <ul className="list-disc pl-6 text-sm">{guide.rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
-            </Card>
+          {/* Ligne 3: Wi‑Fi | Règles */}
+          {(guide.rules?.length || guide.wifi?.ssid || guide.wifi?.password) ? (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {(guide.wifi?.ssid || guide.wifi?.password) && (
+                <Card>
+                  <div className="section-title">📶 Wi‑Fi</div>
+                  <div className="text-sm">
+                    <p>Nom du réseau (SSID): {guide.wifi?.ssid}</p>
+                    {guide.wifi?.password && <p>Mot de passe: {guide.wifi.password}</p>}
+                  </div>
+                </Card>
+              )}
+              {guide.rules?.length ? (
+                <Card>
+                  <div className="section-title">📋 Règles</div>
+                  <ul className="list-disc pl-6 text-sm">{guide.rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
+                </Card>
+              ) : null}
             </div>
           ) : null}
 
@@ -155,8 +165,8 @@ export default function Preview() {
               <div className="space-y-3">
                 {guide.places.map((p) => (
                   <div key={p.id} className="border rounded p-3 avoid-break">
-                    <div className="font-medium">{p.name || '(Sans nom)'} <span className="text-xs text-gray-600">• {p.category}</span></div>
-                    {p.subtype && <div className="text-sm text-gray-600">{p.subtype}</div>}
+                    <div className="text-sm font-semibold text-gray-700">{p.category}</div>
+                    <div className="font-medium">{p.name || '(Sans nom)'}</div>
                     {p.description && <p className="text-sm mt-1">{p.description}</p>}
                     {p.address && <div className="text-sm text-gray-600 mt-1">{p.address}</div>}
                     <div className="text-sm mt-1 flex gap-3">
@@ -227,34 +237,68 @@ export default function Preview() {
           </Card>
           </div>
           {/* Marque fixe en bas du guide (imprimable) */}
-          <div className="mt-8 pt-4 border-t text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+          <a
+            href={BRAND_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-8 pt-4 border-t text-center text-xs text-gray-500 flex items-center justify-center gap-2 hover:underline"
+          >
             <span>Réalisé par</span>
             <img src="/logo-guide.svg" alt="Votre logo" className="h-5 w-5" />
-          </div>
+          </a>
         </div>
         <div className="space-y-3 no-print">
           <Card>
-            <div className="flex flex-col items-center gap-3">
-              {isPublished && guideUrl && <QRCanvas url={guideUrl} size={192} />}
-              <div className="flex gap-2">
-                {/* Impression du guide retirée: conserver uniquement l'impression du QR Code */}
-                <button
-                  className="btn btn-primary"
-                  onClick={() => guide?.guideId && navigate(`/print-qr/${guide.guideId}?auto=1`)}
-                  disabled={!isPublished}
-                >
-                  🖨️ Imprimer le QR Code
-                </button>
-              </div>
+            <div className="flex flex-col items-center gap-4 text-center">
+              {isPublished && guideUrl ? (
+                <>
+                  <QRCanvas url={guideUrl} size={192} />
+                  <p className="text-sm text-gray-600">
+                    Scannez ou partagez ce QR code pour ouvrir directement le guide en ligne.
+                  </p>
+                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                    <span className="text-xs text-gray-600 break-all sm:flex-1 sm:text-left">{guideUrl}</span>
+                    <button
+                      type="button"
+                      className="btn btn-outline mt-2 sm:mt-0"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(guideUrl)
+                          setCopyState('copied')
+                          setTimeout(() => setCopyState('idle'), 1500)
+                        } catch (error) {
+                          console.error('Impossible de copier le lien', error)
+                          setCopyState('error')
+                        }
+                      }}
+                    >
+                      {copyState === 'copied' ? 'Lien copié !' : copyState === 'error' ? 'Copie impossible' : 'Copier le lien' }
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => guide?.guideId && navigate(`/print-qr/${guide.guideId}?auto=1`)}
+                    >
+                      🖨️ Imprimer le QR Code
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Publiez le guide pour générer automatiquement le QR code et le lien à partager avec vos invités.
+                  </p>
+                  <button className="btn btn-primary" onClick={() => {
+                    if (!guide) return
+                    const published = publishGuide(guide)
+                    setGuide(published)
+                    navigate(`/guide/${published.guideId}`)
+                  }}>Publier maintenant</button>
+                </div>
+              )}
             </div>
           </Card>
-          {!isPublished && (
-            <button className="btn btn-primary w-full" onClick={() => {
-              const published = publishGuide(guide)
-              setGuide(published)
-              navigate(`/guide/${published.guideId}`)
-            }}>Publier</button>
-          )}
         </div>
       </div>
     </div>

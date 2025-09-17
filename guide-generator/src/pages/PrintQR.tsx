@@ -14,6 +14,7 @@ export default function PrintQR() {
   const ref = useRef<HTMLDivElement>(null)
   const url = guideId ? publicGuideUrl(guideId) : ''
   const [guide, setGuide] = useState<Guide | null>(null)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
 
   useEffect(() => { if (!guideId) navigate('/'); else setGuide(loadPublished(guideId)) }, [guideId])
 
@@ -45,7 +46,27 @@ export default function PrintQR() {
           </div>
           {guide?.title && <h1 className="text-2xl font-bold no-print">{guide.title}</h1>}
           <p className="no-print">Scannez-moi pour accéder au guide du logement</p>
-          <p className="text-xs text-gray-500 break-all no-print">{url}</p>
+          {url && (
+            <div className="no-print w-full max-w-lg mx-auto bg-gray-100 border border-gray-200 rounded px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <span className="text-xs text-gray-600 break-all sm:flex-1 sm:text-left">{url}</span>
+              <button
+                type="button"
+                className="btn btn-outline mt-2 sm:mt-0"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(url)
+                    setCopyState('copied')
+                    setTimeout(() => setCopyState('idle'), 1500)
+                  } catch (error) {
+                    console.error('Impossible de copier le lien', error)
+                    setCopyState('error')
+                  }
+                }}
+              >
+                {copyState === 'copied' ? 'Lien copié !' : copyState === 'error' ? 'Copie impossible' : 'Copier le lien'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div className="no-print mt-4 flex gap-2">
