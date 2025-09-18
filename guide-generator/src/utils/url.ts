@@ -31,10 +31,14 @@ export function publicGuideUrl(guideId: string, options?: GuideUrlOptions) {
   if (options?.includeShare) {
     const guide = options.guide ?? null
     if (guide) {
-      const sanitized = sanitizeGuide({ ...guide, guideId: guide.guideId ?? guideId })
-      const payload = encodeGuideSharePayload(sanitized)
-      target.hash = `${baseHash}?${SHARE_QUERY_PARAM}=${payload}`
-      return target.toString()
+      try {
+        const sanitized = sanitizeGuide({ ...guide, guideId: guide.guideId ?? guideId })
+        const payload = encodeGuideSharePayload(sanitized)
+        target.hash = `${baseHash}?${SHARE_QUERY_PARAM}=${payload}`
+        return target.toString()
+      } catch (error) {
+        console.warn('Impossible de générer le lien partagé, utilisation du lien classique.', error)
+      }
     }
   }
 

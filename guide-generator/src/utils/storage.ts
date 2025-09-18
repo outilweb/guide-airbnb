@@ -137,7 +137,9 @@ export function saveDraft(guide: Guide) {
 }
 
 export function publishGuide(guide: Guide): Guide {
-  const guideId = guide.guideId ?? crypto.randomUUID()
+  const guideId = guide.guideId ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : makeId('guide'))
   const now = Date.now()
   const finalized: Guide = sanitizeGuide({ ...guide, guideId, createdAt: guide.createdAt ?? now, updatedAt: now })
   localStorage.setItem(`${PUB_PREFIX}${guideId}`, JSON.stringify(finalized))
