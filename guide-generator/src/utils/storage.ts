@@ -153,6 +153,22 @@ export function loadPublished(guideId: string): Guide | null {
   }
 }
 
+export function deletePublishedGuide(guideId: string) {
+  localStorage.removeItem(`${PUB_PREFIX}${guideId}`)
+
+  const rawDraft = localStorage.getItem(DRAFT_KEY)
+  if (!rawDraft) return
+  try {
+    const draft = JSON.parse(rawDraft) as Guide
+    if (draft?.guideId === guideId) {
+      localStorage.removeItem(DRAFT_KEY)
+    }
+  } catch {
+    // Draft is malformed: drop it to avoid orphaned data
+    localStorage.removeItem(DRAFT_KEY)
+  }
+}
+
 export function listPublishedGuides(): Guide[] {
   const guides: Guide[] = []
   for (let i = 0; i < localStorage.length; i += 1) {

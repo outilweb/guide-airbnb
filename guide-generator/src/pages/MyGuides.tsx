@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import type { Guide } from '../types'
-import { listPublishedGuides, saveDraft } from '../utils/storage'
+import { deletePublishedGuide, listPublishedGuides, saveDraft } from '../utils/storage'
 import { publicGuideUrl } from '../utils/url'
 
 type GuideSummary = Guide & { guideId: string }
@@ -43,6 +43,13 @@ export default function MyGuides() {
       console.error('Impossible de copier le lien', error)
       setCopiedId(null)
     }
+  }
+
+  const handleDelete = (guideId: string, title?: string) => {
+    const name = title?.trim() ? `« ${title.trim()} »` : 'ce guide'
+    if (!window.confirm(`Supprimer définitivement ${name} ?`)) return
+    deletePublishedGuide(guideId)
+    setGuides((prev) => prev.filter((guide) => guide.guideId !== guideId))
   }
 
   return (
@@ -88,6 +95,9 @@ export default function MyGuides() {
                 <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide.guideId)}>
                   {copiedId === guide.guideId ? 'Lien copié !' : 'Copier le lien'}
                 </button>
+                <button type="button" className="btn btn-ghost text-red-600" onClick={() => handleDelete(guide.guideId, guide.title)}>
+                  Supprimer
+                </button>
               </div>
             </Card>
           ))}
@@ -96,4 +106,3 @@ export default function MyGuides() {
     </div>
   )
 }
-
