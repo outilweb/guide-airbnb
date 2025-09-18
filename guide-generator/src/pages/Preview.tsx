@@ -302,7 +302,6 @@ export default function Preview() {
                     if (!guide) return
                     const published = publishGuide(guide)
                     setGuide(published)
-                    navigate(`/guide/${published.guideId}`)
                   }}>Publier maintenant</button>
                 </div>
               )}

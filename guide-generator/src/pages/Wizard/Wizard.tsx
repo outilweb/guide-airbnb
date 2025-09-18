@@ -7,7 +7,7 @@ import Step4Theme from './steps/Step4Theme'
 import { z } from 'zod'
 import type { Guide } from '../../types'
 import { emptyGuide, defaultTheme } from '../../types'
-import { loadDraft, saveDraft } from '../../utils/storage'
+import { loadDraft, publishGuide, saveDraft } from '../../utils/storage'
 import { useNavigate } from 'react-router-dom'
 
 const steps = ['Informations du logement', 'Recommandations', 'Style & publication']
@@ -55,7 +55,18 @@ export default function Wizard() {
 
       <div className="mt-6 flex items-center justify-between">
         <button className="btn btn-outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>Retour</button>
-        <button className="btn btn-primary" onClick={() => current < 2 ? setCurrent((c) => c + 1) : navigate('/preview')}>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            if (current < 2) {
+              setCurrent((c) => c + 1)
+              return
+            }
+            const published = publishGuide(guide)
+            setGuide(published)
+            navigate('/preview')
+          }}
+        >
           {current < 2 ? 'Étape suivante' : 'Générer le guide'}
         </button>
       </div>
