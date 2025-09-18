@@ -8,7 +8,6 @@ import Wizard from './pages/Wizard/Wizard.tsx'
 import Preview from './pages/Preview.tsx'
 import PublicGuide from './pages/PublicGuide.tsx'
 import PrintQR from './pages/PrintQR.tsx'
-import MyGuides from './pages/MyGuides.tsx'
 import { ensureDemoSeed } from './utils/seed.ts'
 
 function Bootstrapper() {
@@ -20,7 +19,6 @@ function Bootstrapper() {
       <Routes>
         <Route path="/" element={<App /> }>
           <Route index element={<Landing />} />
-          <Route path="my-guides" element={<MyGuides />} />
           <Route path="wizard" element={<Wizard />} />
           <Route path="preview" element={<Preview />} />
           <Route path="guide/:guideId" element={<PublicGuide />} />

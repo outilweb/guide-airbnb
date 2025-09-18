@@ -36,8 +36,7 @@ export default function MyGuides() {
 
   const handleCopyLink = async (guide: GuideSummary) => {
     try {
-      const shareUrl = publicGuideUrl(guide.guideId, { includeShare: true, guide })
-      await navigator.clipboard.writeText(shareUrl)
+      await navigator.clipboard.writeText(publicGuideUrl(guide.guideId))
       setCopiedId(guide.guideId)
       setTimeout(() => setCopiedId((prev) => (prev === guide.guideId ? null : prev)), 1500)
     } catch (error) {
@@ -86,7 +85,7 @@ export default function MyGuides() {
                 </div>
                 <div className="text-sm text-gray-500 flex flex-col items-start sm:items-end gap-1">
                   <span>Créé le {formatDateTime(guide.createdAt)}</span>
-                  <span>Liens partagés: <a href={publicGuideUrl(guide.guideId, { includeShare: true, guide })} className="text-[var(--accent)] hover:underline" target="_blank" rel="noreferrer">Ouvrir</a></span>
+                  <span>Liens partagés: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">

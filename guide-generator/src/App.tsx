@@ -13,7 +13,6 @@ export default function App() {
           <div className="flex items-center gap-6">
             <nav className="text-sm flex gap-6 text-gray-700">
               <Link to="/" className="hover:text-gray-900">Accueil</Link>
-              <Link to="/my-guides" className="hover:text-gray-900">Mes guides</Link>
               <a href="#" className="hover:text-gray-900">Support</a>
             </nav>
             <div className="text-sm flex gap-2">

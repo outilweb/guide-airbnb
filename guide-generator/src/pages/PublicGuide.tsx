@@ -1,36 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 // emojis utilisés dans les titres de section
-import { useParams, useSearchParams } from 'react-router-dom'
-import { loadPublished, sanitizeGuide } from '../utils/storage'
+import { useParams } from 'react-router-dom'
+import { loadPublished } from '../utils/storage'
 import type { Guide } from '../types'
 import LeafletMap from '../components/LeafletMap'
 import Card from '../components/Card'
 import { formatTimeDisplay, formatPhoneFR } from '../utils/format'
 import { BRAND_URL } from '../config'
-import { decodeGuideSharePayload, SHARE_QUERY_PARAM } from '../utils/share'
 
 export default function PublicGuide() {
   const { guideId } = useParams()
-  const [searchParams] = useSearchParams()
-  const sharePayload = searchParams.get(SHARE_QUERY_PARAM)
   const [guide, setGuide] = useState<Guide | null>(null)
   useEffect(() => {
     if (!guideId) return
-    if (sharePayload) {
-      const decoded = decodeGuideSharePayload(sharePayload)
-      if (decoded) {
-        const normalized = sanitizeGuide({ ...decoded, guideId: decoded.guideId ?? guideId })
-        try {
-          localStorage.setItem(`guide:${normalized.guideId}`, JSON.stringify(normalized))
-        } catch {
-          /* ignore quota issues */
-        }
-        setGuide(normalized)
-        return
-      }
-    }
     setGuide(loadPublished(guideId) || null)
-  }, [guideId, sharePayload])
+  }, [guideId])
 
   const themeVars = useMemo(() => guide ? ({
     ['--primary' as any]: guide.theme.primary,

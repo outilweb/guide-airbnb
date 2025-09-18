@@ -13,7 +13,7 @@ export default function PrintQR() {
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [guide, setGuide] = useState<Guide | null>(null)
-  const url = useMemo(() => (guideId && guide) ? publicGuideUrl(guideId, { includeShare: true, guide }) : guideId ? publicGuideUrl(guideId) : '', [guideId, guide])
+  const url = useMemo(() => (guideId ? publicGuideUrl(guideId) : ''), [guideId])
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
 
   useEffect(() => { if (!guideId) navigate('/'); else setGuide(loadPublished(guideId)) }, [guideId])

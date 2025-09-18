@@ -22,10 +22,7 @@ export default function Preview() {
   }) : undefined, [guide])
 
   const isPublished = !!guide?.guideId
-  const guideUrl = useMemo(() => {
-    if (!guide?.guideId) return ''
-    return publicGuideUrl(guide.guideId, { includeShare: true, guide })
-  }, [guide])
+  const guideUrl = useMemo(() => (guide?.guideId ? publicGuideUrl(guide.guideId) : ''), [guide])
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
