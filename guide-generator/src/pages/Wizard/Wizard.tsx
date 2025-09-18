@@ -56,7 +56,7 @@ export default function Wizard() {
       <div className="mt-6 flex items-center justify-between">
         <button className="btn btn-outline" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>Retour</button>
         <button className="btn btn-primary" onClick={() => current < 2 ? setCurrent((c) => c + 1) : navigate('/preview')}>
-          {current < 2 ? 'Étape suivante' : 'Générer l’aperçu'}
+          {current < 2 ? 'Étape suivante' : 'Générer le guide'}
         </button>
       </div>
 

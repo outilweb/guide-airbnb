@@ -10,27 +10,24 @@ import PublicGuide from './pages/PublicGuide.tsx'
 import PrintQR from './pages/PrintQR.tsx'
 import MyGuides from './pages/MyGuides.tsx'
 import { ensureDemoSeed } from './utils/seed.ts'
-import { AuthProvider } from './contexts/AuthContext.tsx'
 
 function Bootstrapper() {
   useEffect(() => {
     ensureDemoSeed()
   }, [])
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<App /> }>
-            <Route index element={<Landing />} />
-            <Route path="my-guides" element={<MyGuides />} />
-            <Route path="wizard" element={<Wizard />} />
-            <Route path="preview" element={<Preview />} />
-            <Route path="guide/:guideId" element={<PublicGuide />} />
-            <Route path="print-qr/:guideId" element={<PrintQR />} />
-          </Route>
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<App /> }>
+          <Route index element={<Landing />} />
+          <Route path="my-guides" element={<MyGuides />} />
+          <Route path="wizard" element={<Wizard />} />
+          <Route path="preview" element={<Preview />} />
+          <Route path="guide/:guideId" element={<PublicGuide />} />
+          <Route path="print-qr/:guideId" element={<PrintQR />} />
+        </Route>
+      </Routes>
+    </HashRouter>
   )
 }
 

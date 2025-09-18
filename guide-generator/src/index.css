@@ -30,10 +30,6 @@ h1, h2, h3, h4, h5, h6 {
 .btn-outline:hover { background: rgba(52,152,219,0.08); }
 .btn-ghost { @apply text-gray-700; }
 
-.input {
-  @apply border border-gray-300 rounded-md px-3 py-2 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition;
-}
-
 /* Section title */
 .section-title { @apply flex items-center gap-2 text-xl font-semibold mb-2; color: var(--primary); }
 .card { @apply bg-white border border-gray-200 rounded-lg shadow-sm; }

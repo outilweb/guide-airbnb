@@ -55,8 +55,17 @@ export default function Step4Theme({ guide, onChange }: { guide: Guide; onChange
       res.push({ id: x.id, label: x.label, address: x.address, mapsUrl: x.mapsUrl })
     })
 
-    return res
+    return res.filter((point) => {
+      const label = (point.label ?? '').trim()
+      const address = (point.address ?? '').trim()
+      return Boolean(label || address)
+    })
   }, [guide])
+
+  const rules = useMemo(
+    () => (guide.rules ?? []).filter((rule) => typeof rule?.text === 'string' && rule.text.trim().length > 0),
+    [guide],
+  )
   return (
     <div className="space-y-4">
       <Card title={<span className="section-title !mb-0">🎨 Personnalisation</span>}>
@@ -102,7 +111,7 @@ export default function Step4Theme({ guide, onChange }: { guide: Guide; onChange
           <Card>
             <div className="section-title">🏠 Adresse</div>
             <div className="prose max-w-none">
-              <h1 style={{ color: 'var(--primary)' }}>{guide.title || 'Sans titre'}</h1>
+              <h1 className="text-gray-800">{guide.title || 'Sans titre'}</h1>
               {guide.address && <p className="text-gray-600">{guide.address}</p>}
             </div>
           </Card>
@@ -144,7 +153,7 @@ export default function Step4Theme({ guide, onChange }: { guide: Guide; onChange
         )}
 
         {/* Ligne 3: Wi‑Fi | Règles */}
-        {(guide.rules?.length || guide.wifi?.ssid || guide.wifi?.password) ? (
+        {(rules.length || guide.wifi?.ssid || guide.wifi?.password) ? (
           <div className="grid sm:grid-cols-2 gap-4">
             {(guide.wifi?.ssid || guide.wifi?.password) && (
               <Card>
@@ -155,10 +164,10 @@ export default function Step4Theme({ guide, onChange }: { guide: Guide; onChange
                 </div>
               </Card>
             )}
-            {guide.rules?.length ? (
+            {rules.length ? (
               <Card>
                 <div className="section-title">📋 Règles</div>
-                <ul className="list-disc pl-6 text-sm">{guide.rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
+                <ul className="list-disc pl-6 text-sm">{rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
               </Card>
             ) : null}
           </div>

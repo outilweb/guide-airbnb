@@ -1,31 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 // emojis utilisés dans les titres de section
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { loadPublished } from '../utils/storage'
-import type { Guide, PublishedGuide } from '../types'
+import type { Guide } from '../types'
 import LeafletMap from '../components/LeafletMap'
 import Card from '../components/Card'
 import { formatTimeDisplay, formatPhoneFR } from '../utils/format'
 import { BRAND_URL } from '../config'
-import { decodeGuideSharePayload, SHARE_QUERY_PARAM } from '../utils/share'
 
 export default function PublicGuide() {
   const { guideId } = useParams()
-  const [search] = useSearchParams()
   const [guide, setGuide] = useState<Guide | null>(null)
-  useEffect(() => {
-    if (!guideId) return
-    const shareToken = search.get(SHARE_QUERY_PARAM)
-    if (shareToken) {
-      const shared = decodeGuideSharePayload(shareToken)
-      if (shared) {
-        const normalized: PublishedGuide = { ...shared, guideId }
-        setGuide(normalized)
-        return
-      }
-    }
-    setGuide(loadPublished(guideId) || null)
-  }, [guideId, search])
+  useEffect(() => { if (guideId) setGuide(loadPublished(guideId) || null) }, [guideId])
 
   const themeVars = useMemo(() => guide ? ({
     ['--primary' as any]: guide.theme.primary,
@@ -33,6 +19,11 @@ export default function PublicGuide() {
     ['--font-heading' as any]: guide.theme.fontHeading,
     ['--font-body' as any]: guide.theme.fontBody,
   }) : undefined, [guide])
+
+  const rules = useMemo(
+    () => (guide?.rules ?? []).filter((rule) => typeof rule?.text === 'string' && rule.text.trim().length > 0),
+    [guide],
+  )
 
   if (!guide) return <div className="max-w-5xl mx-auto px-4 py-6">Guide introuvable.</div>
 
@@ -79,7 +70,11 @@ export default function PublicGuide() {
       res.push({ id: x.id, label: x.label, address: x.address, mapsUrl: x.mapsUrl })
     })
 
-    return res
+    return res.filter((point) => {
+      const label = (point.label ?? '').trim()
+      const address = (point.address ?? '').trim()
+      return Boolean(label || address)
+    })
   })()
 
   return (
@@ -96,7 +91,7 @@ export default function PublicGuide() {
           <Card>
             <div className="section-title">🏠 Adresse</div>
             <div className="prose max-w-none">
-              <h1 style={{ color: 'var(--primary)' }}>{guide.title}</h1>
+              <h1 className="text-gray-800">{guide.title}</h1>
               {guide.address && <p className="text-gray-600">{guide.address}</p>}
             </div>
           </Card>
@@ -141,7 +136,7 @@ export default function PublicGuide() {
       )}
 
       {/* Ligne 3: Wi‑Fi | Règles */}
-      {(guide.rules?.length || (guide.wifi && (guide.wifi.ssid || guide.wifi.password))) && (
+      {(rules.length || (guide.wifi && (guide.wifi.ssid || guide.wifi.password))) && (
         <section className="mb-4">
           <div className="grid sm:grid-cols-2 gap-4">
             {guide.wifi && (guide.wifi.ssid || guide.wifi.password) && (
@@ -153,10 +148,10 @@ export default function PublicGuide() {
                 </div>
               </Card>
             )}
-            {guide.rules?.length ? (
+            {rules.length ? (
               <Card>
                 <div className="section-title">📋 Règles</div>
-                <ul className="list-disc pl-6">{guide.rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
+                <ul className="list-disc pl-6">{rules.map(r => <li key={r.id}>{r.text}</li>)}</ul>
               </Card>
             ) : null}
           </div>
