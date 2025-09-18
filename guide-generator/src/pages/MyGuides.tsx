@@ -34,11 +34,12 @@ export default function MyGuides() {
     navigate('/wizard')
   }
 
-  const handleCopyLink = async (guideId: string) => {
+  const handleCopyLink = async (guide: GuideSummary) => {
     try {
-      await navigator.clipboard.writeText(publicGuideUrl(guideId))
-      setCopiedId(guideId)
-      setTimeout(() => setCopiedId((prev) => (prev === guideId ? null : prev)), 1500)
+      const shareUrl = publicGuideUrl(guide.guideId, { includeShare: true, guide })
+      await navigator.clipboard.writeText(shareUrl)
+      setCopiedId(guide.guideId)
+      setTimeout(() => setCopiedId((prev) => (prev === guide.guideId ? null : prev)), 1500)
     } catch (error) {
       console.error('Impossible de copier le lien', error)
       setCopiedId(null)
@@ -85,14 +86,14 @@ export default function MyGuides() {
                 </div>
                 <div className="text-sm text-gray-500 flex flex-col items-start sm:items-end gap-1">
                   <span>Créé le {formatDateTime(guide.createdAt)}</span>
-                  <span>Liens partagés: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
+                  <span>Liens partagés: <a href={publicGuideUrl(guide.guideId, { includeShare: true, guide })} className="text-[var(--accent)] hover:underline" target="_blank" rel="noreferrer">Ouvrir</a></span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link to={`/guide/${guide.guideId}`} className="btn btn-outline">Voir le guide</Link>
                 <Link to={`/print-qr/${guide.guideId}`} className="btn btn-outline">Imprimer le QR code</Link>
                 <button type="button" className="btn btn-ghost" onClick={() => handleContinueEditing(guide)}>Modifier</button>
-                <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide.guideId)}>
+                <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide)}>
                   {copiedId === guide.guideId ? 'Lien copié !' : 'Copier le lien'}
                 </button>
                 <button type="button" className="btn btn-ghost text-red-600" onClick={() => handleDelete(guide.guideId, guide.title)}>

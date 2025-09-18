@@ -117,7 +117,9 @@ function ensureGuideShape(raw: any): Guide {
   return guide
 }
 
-const sanitizeGuide = (raw: any): Guide => ensureGuideShape(raw)
+export function sanitizeGuide(raw: any): Guide {
+  return ensureGuideShape(raw)
+}
 
 export function loadDraft(): Guide | null {
   const raw = localStorage.getItem(DRAFT_KEY)

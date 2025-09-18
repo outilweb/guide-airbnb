@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import { publicGuideUrl } from '../utils/url'
@@ -12,8 +12,8 @@ export default function PrintQR() {
   const [search] = useSearchParams()
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
-  const url = guideId ? publicGuideUrl(guideId) : ''
   const [guide, setGuide] = useState<Guide | null>(null)
+  const url = useMemo(() => (guideId && guide) ? publicGuideUrl(guideId, { includeShare: true, guide }) : guideId ? publicGuideUrl(guideId) : '', [guideId, guide])
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
 
   useEffect(() => { if (!guideId) navigate('/'); else setGuide(loadPublished(guideId)) }, [guideId])
