@@ -5,7 +5,7 @@ import { loadDraft, publishGuide } from '../utils/storage'
 import { useNavigate } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import LeafletMap from '../components/LeafletMap'
-import { publicGuideUrl } from '../utils/url'
+import { downloadGuideHtml, guideShareInfo } from '../utils/exportGuide'
 import { formatPhoneFR, formatTimeDisplay } from '../utils/format'
 import { BRAND_URL } from '../config'
 
@@ -22,8 +22,9 @@ export default function Preview() {
   }) : undefined, [guide])
 
   const isPublished = !!guide?.guideId
-  const guideUrl = useMemo(() => (guide?.guideId ? publicGuideUrl(guide.guideId) : ''), [guide])
+  const shareInfo = useMemo(() => (guide && guide.guideId ? guideShareInfo(guide) : null), [guide])
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
+  const [downloadState, setDownloadState] = useState<'idle' | 'success' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
   // If explicit and recommendation share the same address, keep only the recommendation(s).
@@ -77,6 +78,19 @@ export default function Preview() {
     () => (guide?.rules ?? []).filter((rule) => typeof rule?.text === 'string' && rule.text.trim().length > 0),
     [guide],
   )
+
+  const handleDownload = () => {
+    if (!guide || !isPublished) return
+    try {
+      downloadGuideHtml(guide)
+      setDownloadState('success')
+      setTimeout(() => setDownloadState('idle'), 2000)
+    } catch (error) {
+      console.error('Impossible de générer le guide HTML', error)
+      setDownloadState('error')
+      setTimeout(() => setDownloadState('idle'), 2500)
+    }
+  }
 
   if (!guide) return <div className="max-w-5xl mx-auto px-4 py-6">Aucun brouillon trouvé.</div>
 
@@ -259,39 +273,62 @@ export default function Preview() {
         <div className="space-y-3 no-print">
           <Card>
             <div className="flex flex-col items-center gap-4 text-center">
-              {isPublished && guideUrl ? (
+              {isPublished && shareInfo ? (
                 <>
-                  <QRCanvas url={guideUrl} size={192} />
+                  <QRCanvas url={shareInfo.shareUrl} size={192} />
                   <p className="text-sm text-gray-600">
-                    Scannez ou partagez ce QR code pour ouvrir directement le guide en ligne.
+                    Scannez ce QR code pour ouvrir le fichier HTML du guide. Partagez ou hébergez le
+                    fichier avec le même nom pour garantir son ouverture depuis le QR.
                   </p>
-                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                    <span className="text-xs text-gray-600 break-all sm:flex-1 sm:text-left">{guideUrl}</span>
-                    <button
-                      type="button"
-                      className="btn btn-outline mt-2 sm:mt-0"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(guideUrl)
-                          setCopyState('copied')
-                          setTimeout(() => setCopyState('idle'), 1500)
-                        } catch (error) {
-                          console.error('Impossible de copier le lien', error)
-                          setCopyState('error')
-                        }
-                      }}
-                    >
-                      {copyState === 'copied' ? 'Lien copié !' : copyState === 'error' ? 'Copie impossible' : 'Copier le lien' }
-                    </button>
+                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 flex flex-col gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
+                      <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="sm:flex-1">
+                        <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">URL du QR</div>
+                        <span className="text-xs text-gray-600 break-all sm:text-left">{shareInfo.shareUrl}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={async () => {
+                          if (!shareInfo.shareUrl) return
+                          try {
+                            await navigator.clipboard.writeText(shareInfo.shareUrl)
+                            setCopyState('copied')
+                            setTimeout(() => setCopyState('idle'), 1500)
+                          } catch (error) {
+                            console.error('Impossible de copier l\'URL du guide', error)
+                            setCopyState('error')
+                          }
+                        }}
+                      >
+                        {copyState === 'copied' ? 'URL copiée !' : copyState === 'error' ? 'Copie impossible' : 'Copier l\'URL du QR'}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
                     <button
                       className="btn btn-primary"
+                      type="button"
+                      onClick={handleDownload}
+                    >
+                      {downloadState === 'success' ? 'Fichier téléchargé !' : '💾 Télécharger le guide (HTML)'}
+                    </button>
+                    <button
+                      className="btn btn-outline"
                       onClick={() => guide?.guideId && navigate(`/print-qr/${guide.guideId}?auto=1`)}
                     >
                       🖨️ Imprimer le QR Code
                     </button>
                   </div>
+                  {downloadState === 'error' && (
+                    <p className="text-xs text-red-600 text-center">
+                      Impossible de générer le fichier HTML. Réessayez ou utilisez un autre navigateur.
+                    </p>
+                  )}
                 </>
               ) : (
                 <div className="space-y-3">

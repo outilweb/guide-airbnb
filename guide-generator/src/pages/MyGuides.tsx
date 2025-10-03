@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import type { Guide } from '../types'
 import { deletePublishedGuide, listPublishedGuides, saveDraft } from '../utils/storage'
-import { publicGuideUrl } from '../utils/url'
+import { guideShareInfo, downloadGuideHtml } from '../utils/exportGuide'
 
 type GuideSummary = Guide & { guideId: string }
 
@@ -36,12 +36,22 @@ export default function MyGuides() {
 
   const handleCopyLink = async (guide: GuideSummary) => {
     try {
-      await navigator.clipboard.writeText(publicGuideUrl(guide.guideId))
+      const { shareUrl } = guideShareInfo(guide)
+      if (!shareUrl) throw new Error('Missing share URL')
+      await navigator.clipboard.writeText(shareUrl)
       setCopiedId(guide.guideId)
       setTimeout(() => setCopiedId((prev) => (prev === guide.guideId ? null : prev)), 1500)
     } catch (error) {
       console.error('Impossible de copier le lien', error)
       setCopiedId(null)
+    }
+  }
+
+  const handleDownloadHtml = (guide: GuideSummary) => {
+    try {
+      downloadGuideHtml(guide)
+    } catch (error) {
+      console.error('Impossible de générer le fichier HTML', error)
     }
   }
 
@@ -74,33 +84,40 @@ export default function MyGuides() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {guides.map((guide) => (
-            <Card key={guide.guideId}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-800">{guide.title || 'Guide sans titre'}</h2>
-                  {guide.address && <p className="text-sm text-gray-600">{guide.address}</p>}
-                  <p className="text-xs text-gray-500 mt-2">Mis à jour le {formatDateTime(guide.updatedAt)}</p>
-                  <p className="text-xs text-gray-500">Identifiant: <code>{guide.guideId}</code></p>
+          {guides.map((guide) => {
+            const share = guideShareInfo(guide)
+            return (
+              <Card key={guide.guideId}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-800">{guide.title || 'Guide sans titre'}</h2>
+                    {guide.address && <p className="text-sm text-gray-600">{guide.address}</p>}
+                    <p className="text-xs text-gray-500 mt-2">Mis à jour le {formatDateTime(guide.updatedAt)}</p>
+                    <p className="text-xs text-gray-500">Identifiant: <code>{guide.guideId}</code></p>
+                  </div>
+                  <div className="text-sm text-gray-500 flex flex-col items-start sm:items-end gap-1">
+                    <span>Créé le {formatDateTime(guide.createdAt)}</span>
+                    <span>Fichier HTML : <code>{share.fileName}</code></span>
+                    <span>Aperçu interne: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500 flex flex-col items-start sm:items-end gap-1">
-                  <span>Créé le {formatDateTime(guide.createdAt)}</span>
-                  <span>Liens partagés: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link to={`/guide/${guide.guideId}`} className="btn btn-outline">Voir le guide</Link>
+                  <Link to={`/print-qr/${guide.guideId}`} className="btn btn-outline">Imprimer le QR code</Link>
+                  <button type="button" className="btn btn-outline" onClick={() => handleDownloadHtml(guide)}>
+                    💾 Télécharger le HTML
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => handleContinueEditing(guide)}>Modifier</button>
+                  <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide)}>
+                    {copiedId === guide.guideId ? 'URL copiée !' : 'Copier l\'URL du QR'}
+                  </button>
+                  <button type="button" className="btn btn-ghost text-red-600" onClick={() => handleDelete(guide.guideId, guide.title)}>
+                    Supprimer
+                  </button>
                 </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link to={`/guide/${guide.guideId}`} className="btn btn-outline">Voir le guide</Link>
-                <Link to={`/print-qr/${guide.guideId}`} className="btn btn-outline">Imprimer le QR code</Link>
-                <button type="button" className="btn btn-ghost" onClick={() => handleContinueEditing(guide)}>Modifier</button>
-                <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide)}>
-                  {copiedId === guide.guideId ? 'Lien copié !' : 'Copier le lien'}
-                </button>
-                <button type="button" className="btn btn-ghost text-red-600" onClick={() => handleDelete(guide.guideId, guide.title)}>
-                  Supprimer
-                </button>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
