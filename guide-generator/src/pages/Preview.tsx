@@ -276,13 +276,13 @@ export default function Preview() {
                 <>
                   <QRCanvas url={shareInfo.shareUrl} size={192} />
                   <p className="text-sm text-gray-600">
-                    Scannez ce QR code pour ouvrir le guide en ligne avec la carte interactive. Téléchargez aussi le fichier HTML si vous souhaitez l'envoyer directement à vos invités.
+                    Scannez ce QR code pour ouvrir le fichier HTML du guide. Hébergez ou partagez ce fichier avec le même nom pour garantir l'ouverture du QR.
                   </p>
                   <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3">
                     <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
                     <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
                     <p className="mt-2 text-xs text-gray-500">
-                      Conservez ce nom lorsque vous partagez le fichier HTML afin de faciliter le suivi des versions.
+                      Conservez ce nom lorsque vous partagez le fichier HTML afin que le QR code reste valide.
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">

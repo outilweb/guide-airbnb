@@ -58,13 +58,13 @@ export default function PrintQR() {
             <QRCanvas url={shareInfo?.shareUrl || ''} size={512} />
           </div>
           {guide?.title && <h1 className="text-2xl font-bold no-print">{guide.title}</h1>}
-          <p className="no-print">Scannez ce QR code pour ouvrir le guide en ligne avec la carte interactive. Téléchargez aussi le fichier HTML si besoin.</p>
+          <p className="no-print">Scannez ce QR code pour ouvrir le fichier HTML du guide. Hébergez ou partagez ce fichier avec le même nom pour garder le QR fonctionnel.</p>
           {shareInfo?.shareUrl && (
             <div className="no-print w-full max-w-lg mx-auto bg-gray-100 border border-gray-200 rounded px-3 py-3">
               <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
               <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
               <p className="mt-2 text-xs text-gray-500">
-                Conservez ce nom lorsque vous transmettez le fichier HTML pour harmoniser les versions partagées.
+                Conservez ce nom lorsque vous diffusez le fichier HTML afin que le QR code reste valide.
               </p>
             </div>
           )}

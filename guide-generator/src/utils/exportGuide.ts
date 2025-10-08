@@ -114,13 +114,9 @@ const resolveShareBase = () => {
 }
 
 export function guideShareUrl(meta: { guideId?: string; title?: string }) {
+  const fileName = guideFileName(meta)
   const base = resolveShareBase()
-  if (meta?.guideId) {
-    const suffix = `#/guide/${meta.guideId}`
-    return base ? `${base}/${suffix}` : suffix
-  }
-  const fallback = guideFileName(meta)
-  return base ? `${base}/${fallback}` : fallback
+  return base ? `${base}/${fileName}` : fileName
 }
 
 export function guideShareInfo(meta: { guideId?: string; title?: string }) {
@@ -281,11 +277,18 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
   const mapScript = hasInteractiveMap ? `
     <script>
       (function() {
-        const DATA = ${mapJson};
-        const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        function init() {
+        var DATA = ${mapJson};
+        var TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        var started = false;
+        function initialiseMap() {
+          if (started) return;
+          if (typeof window.L === 'undefined') {
+            window.setTimeout(initialiseMap, 80);
+            return;
+          }
           var container = document.getElementById('guide-map');
-          if (!container || typeof window.L === 'undefined') return;
+          if (!container) return;
+          started = true;
           var map = window.L.map(container, { scrollWheelZoom: false });
           window.L.tileLayer(TILE_URL, { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
           var bounds = window.L.latLngBounds([]);
@@ -296,15 +299,15 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
             bounds.extend([point.lat, point.lng]);
           });
           if (bounds.isValid()) {
-            if (DATA.length === 1) {
-              map.setView(bounds.getCenter(), 15);
-            } else {
-              map.fitBounds(bounds.pad(0.2));
-            }
+            if (DATA.length === 1) map.setView(bounds.getCenter(), 15);
+            else map.fitBounds(bounds.pad(0.2));
           }
         }
-        if (document.readyState === 'complete') init();
-        else window.addEventListener('load', init, { once: true });
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          initialiseMap();
+        } else {
+          window.addEventListener('DOMContentLoaded', initialiseMap, { once: true });
+        }
       })();
     </script>
   ` : ''
