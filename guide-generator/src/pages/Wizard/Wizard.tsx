@@ -36,6 +36,11 @@ export default function Wizard() {
     setSaveTick((t) => t + 1)
   }, [guide])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [current])
+
   const stepView = useMemo(() => {
     switch (current) {
       case 0: return <Step1Info guide={guide} onChange={setGuide} schema={schema} />

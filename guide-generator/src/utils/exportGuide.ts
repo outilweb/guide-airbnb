@@ -1,6 +1,8 @@
 import type { Guide } from '../types'
 import { formatPhoneFR, formatTimeDisplay } from './format'
 import { GUIDE_SHARE_BASE } from '../config'
+import type { GeocodedPoint, PointInput } from './geocode'
+import { geocodePoints } from './geocode'
 
 type MapPoint = { id: string; label: string; address?: string; mapsUrl?: string }
 
@@ -36,6 +38,8 @@ const escapeHtml = (value: string | undefined | null) => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+const escapeForScript = (json: string) => json.replace(/</g, '\\u003c')
 
 const computeMapPoints = (guide: Guide): MapPoint[] => {
   const explicit = guide.map?.points || []
@@ -103,21 +107,29 @@ export function guideFileName(meta: { guideId?: string; title?: string }): strin
   return `${stem}.html`
 }
 
-export function guideShareUrlFromFileName(fileName: string): string {
-  if (!fileName) return ''
-  const base = GUIDE_SHARE_BASE && GUIDE_SHARE_BASE.length > 0
-    ? GUIDE_SHARE_BASE
-    : (typeof window !== 'undefined' && window.location?.origin ? window.location.origin.replace(/\/+$/, '') : '')
-  return base ? `${base}/${fileName}` : fileName
+const resolveShareBase = () => {
+  if (GUIDE_SHARE_BASE && GUIDE_SHARE_BASE.length > 0) return GUIDE_SHARE_BASE
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin.replace(/\/+$/, '')
+  return ''
+}
+
+export function guideShareUrl(meta: { guideId?: string; title?: string }) {
+  const base = resolveShareBase()
+  if (meta?.guideId) {
+    const suffix = `#/guide/${meta.guideId}`
+    return base ? `${base}/${suffix}` : suffix
+  }
+  const fallback = guideFileName(meta)
+  return base ? `${base}/${fallback}` : fallback
 }
 
 export function guideShareInfo(meta: { guideId?: string; title?: string }) {
   const fileName = guideFileName(meta)
-  const shareUrl = guideShareUrlFromFileName(fileName)
+  const shareUrl = guideShareUrl(meta)
   return { fileName, shareUrl }
 }
 
-export function renderGuideHtml(guide: Guide): string {
+export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[] }): string {
   const primary = sanitizeColor(guide.theme?.primary, '#2c3e50')
   const accent = sanitizeColor(guide.theme?.accent, '#3498db')
   const fontHeading = sanitizeFont(guide.theme?.fontHeading, 'Inter')
@@ -130,6 +142,18 @@ export function renderGuideHtml(guide: Guide): string {
   const rules = guide.rules || []
   const places = guide.places || []
   const links = guide.links || []
+
+  const geocodedPoints = (options?.geocodedPoints ?? []).filter((point) => typeof point.lat === 'number' && typeof point.lng === 'number')
+  const mapData = geocodedPoints.map((point) => ({
+    id: point.id,
+    label: point.label,
+    lat: Number(point.lat.toFixed(6)),
+    lng: Number(point.lng.toFixed(6)),
+    url: point.url,
+    isHome: point.id === 'home'
+  }))
+  const hasInteractiveMap = mapData.length > 0
+  const mapJson = hasInteractiveMap ? escapeForScript(JSON.stringify(mapData)) : ''
 
   const contactBlocks: string[] = []
   if (guide.contact?.name) contactBlocks.push(`<div><span class="label">Nom</span><span>${escapeHtml(guide.contact.name)}</span></div>`) 
@@ -227,6 +251,12 @@ export function renderGuideHtml(guide: Guide): string {
         <div class="card">
           <div class="section-title">🗺️ Accès & environs</div>
           ${guide.map?.homeAddress ? `<p class="muted">Adresse du logement : ${escapeHtml(guide.map.homeAddress)}</p>` : ''}
+          ${hasInteractiveMap ? `
+            <div class="map-shell">
+              <div id="guide-map" aria-label="Carte interactive des environs"></div>
+            </div>
+            <p class="map-note">Déplacez-vous sur la carte pour explorer les environs. Cliquez sur un repère pour obtenir l'itinéraire.</p>
+          ` : ''}
           ${mapPoints.length > 0 ? `
             <ul class="list">
               ${mapPoints.map((point) => `
@@ -247,6 +277,37 @@ export function renderGuideHtml(guide: Guide): string {
       </section>
     `
     : ''
+
+  const mapScript = hasInteractiveMap ? `
+    <script>
+      (function() {
+        const DATA = ${mapJson};
+        const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        function init() {
+          var container = document.getElementById('guide-map');
+          if (!container || typeof window.L === 'undefined') return;
+          var map = window.L.map(container, { scrollWheelZoom: false });
+          window.L.tileLayer(TILE_URL, { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+          var bounds = window.L.latLngBounds([]);
+          DATA.forEach(function(point) {
+            var marker = window.L.marker([point.lat, point.lng]).addTo(map);
+            var content = '<strong>' + point.label + '</strong>' + (point.url ? '<br/><a href="' + point.url + '" target="_blank" rel="noreferrer">Ouvrir dans Maps</a>' : '');
+            marker.bindPopup(content);
+            bounds.extend([point.lat, point.lng]);
+          });
+          if (bounds.isValid()) {
+            if (DATA.length === 1) {
+              map.setView(bounds.getCenter(), 15);
+            } else {
+              map.fitBounds(bounds.pad(0.2));
+            }
+          }
+        }
+        if (document.readyState === 'complete') init();
+        else window.addEventListener('load', init, { once: true });
+      })();
+    </script>
+  ` : ''
 
   const emergenciesBlock = `
     <section class="block">
@@ -283,6 +344,20 @@ export function renderGuideHtml(guide: Guide): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
+    ${hasInteractiveMap ? `
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-o9N1j7kG61Xf9AKFZ4YkP82LPvfAvX8+bD1t1f0z0SY="
+      crossorigin=""
+    />
+    <script
+      defer
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-o9N1j7kG61Xf9AKFZ4YkP82LPvfAvX8+bD1t1f0z0SY="
+      crossorigin=""
+    ></script>
+    ` : ''}
     <style>
       :root {
         --primary: ${primary};
@@ -312,6 +387,9 @@ export function renderGuideHtml(guide: Guide): string {
       .list { list-style: disc; padding-left: 20px; margin: 0; display: grid; gap: 8px; }
       .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
       .badge { display: inline-flex; align-items: center; padding: 6px 12px; background: rgba(52, 152, 219, 0.12); border-radius: 999px; font-size: 0.8rem; text-decoration: none; }
+      .map-shell { margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02); }
+      #guide-map { width: 100%; height: 320px; }
+      .map-note { font-size: 0.75rem; color: #6b7280; margin-top: 8px; }
       .place-stack { display: grid; gap: 16px; }
       .place { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
       .place-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; color: var(--accent); }
@@ -365,19 +443,38 @@ export function renderGuideHtml(guide: Guide): string {
         Guide exporté depuis l'application Guide Airbnb.
       </footer>
     </main>
+    ${mapScript}
   </body>
 </html>`
 }
 
-export function createGuideHtmlBlob(guide: Guide) {
-  const html = renderGuideHtml(guide)
+export async function createGuideHtmlBlob(guide: Guide) {
   const fileName = guideFileName({ guideId: guide.guideId, title: guide.title })
+  let geocoded: GeocodedPoint[] = []
+  try {
+    const inputs: PointInput[] = []
+    const homeAddress = guide.map?.homeAddress || guide.address || ''
+    if (homeAddress.trim().length > 0) {
+      inputs.push({ id: 'home', label: guide.title || 'Logement', address: homeAddress })
+    }
+    computeMapPoints(guide).forEach((point) => {
+      const label = point.label && point.label.trim().length > 0 ? point.label : (point.address || "Point d'intérêt")
+      inputs.push({ id: point.id, label, address: point.address, mapsUrl: point.mapsUrl })
+    })
+    if (inputs.length > 0) {
+      geocoded = await geocodePoints(inputs, { contextAddress: homeAddress })
+    }
+  } catch (error) {
+    console.error('Impossible de géocoder les points du guide exporté', error)
+  }
+
+  const html = renderGuideHtml(guide, { geocodedPoints: geocoded })
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
   return { fileName, blob }
 }
 
-export function downloadGuideHtml(guide: Guide): string {
-  const { fileName, blob } = createGuideHtmlBlob(guide)
+export async function downloadGuideHtml(guide: Guide): Promise<string> {
+  const { fileName, blob } = await createGuideHtmlBlob(guide)
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

@@ -15,7 +15,6 @@ const formatDateTime = (timestamp?: number) => {
 export default function MyGuides() {
   const navigate = useNavigate()
   const [guides, setGuides] = useState<GuideSummary[]>([])
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     const load = () => {
@@ -34,22 +33,9 @@ export default function MyGuides() {
     navigate('/wizard')
   }
 
-  const handleCopyLink = async (guide: GuideSummary) => {
+  const handleDownloadHtml = async (guide: GuideSummary) => {
     try {
-      const { shareUrl } = guideShareInfo(guide)
-      if (!shareUrl) throw new Error('Missing share URL')
-      await navigator.clipboard.writeText(shareUrl)
-      setCopiedId(guide.guideId)
-      setTimeout(() => setCopiedId((prev) => (prev === guide.guideId ? null : prev)), 1500)
-    } catch (error) {
-      console.error('Impossible de copier le lien', error)
-      setCopiedId(null)
-    }
-  }
-
-  const handleDownloadHtml = (guide: GuideSummary) => {
-    try {
-      downloadGuideHtml(guide)
+      await downloadGuideHtml(guide)
     } catch (error) {
       console.error('Impossible de générer le fichier HTML', error)
     }
@@ -108,9 +94,6 @@ export default function MyGuides() {
                     💾 Télécharger le HTML
                   </button>
                   <button type="button" className="btn btn-ghost" onClick={() => handleContinueEditing(guide)}>Modifier</button>
-                  <button type="button" className="btn btn-ghost" onClick={() => handleCopyLink(guide)}>
-                    {copiedId === guide.guideId ? 'URL copiée !' : 'Copier l\'URL du QR'}
-                  </button>
                   <button type="button" className="btn btn-ghost text-red-600" onClick={() => handleDelete(guide.guideId, guide.title)}>
                     Supprimer
                   </button>

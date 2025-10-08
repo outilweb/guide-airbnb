@@ -23,7 +23,6 @@ export default function Preview() {
 
   const isPublished = !!guide?.guideId
   const shareInfo = useMemo(() => (guide && guide.guideId ? guideShareInfo(guide) : null), [guide])
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [downloadState, setDownloadState] = useState<'idle' | 'success' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
@@ -79,10 +78,10 @@ export default function Preview() {
     [guide],
   )
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!guide || !isPublished) return
     try {
-      downloadGuideHtml(guide)
+      await downloadGuideHtml(guide)
       setDownloadState('success')
       setTimeout(() => setDownloadState('idle'), 2000)
     } catch (error) {
@@ -277,37 +276,14 @@ export default function Preview() {
                 <>
                   <QRCanvas url={shareInfo.shareUrl} size={192} />
                   <p className="text-sm text-gray-600">
-                    Scannez ce QR code pour ouvrir le fichier HTML du guide. Partagez ou hébergez le
-                    fichier avec le même nom pour garantir son ouverture depuis le QR.
+                    Scannez ce QR code pour ouvrir le guide en ligne avec la carte interactive. Téléchargez aussi le fichier HTML si vous souhaitez l'envoyer directement à vos invités.
                   </p>
-                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 flex flex-col gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
-                      <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <div className="sm:flex-1">
-                        <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">URL du QR</div>
-                        <span className="text-xs text-gray-600 break-all sm:text-left">{shareInfo.shareUrl}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-outline"
-                        onClick={async () => {
-                          if (!shareInfo.shareUrl) return
-                          try {
-                            await navigator.clipboard.writeText(shareInfo.shareUrl)
-                            setCopyState('copied')
-                            setTimeout(() => setCopyState('idle'), 1500)
-                          } catch (error) {
-                            console.error('Impossible de copier l\'URL du guide', error)
-                            setCopyState('error')
-                          }
-                        }}
-                      >
-                        {copyState === 'copied' ? 'URL copiée !' : copyState === 'error' ? 'Copie impossible' : 'Copier l\'URL du QR'}
-                      </button>
-                    </div>
+                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
+                    <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Conservez ce nom lorsque vous partagez le fichier HTML afin de faciliter le suivi des versions.
+                    </p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
                     <button
