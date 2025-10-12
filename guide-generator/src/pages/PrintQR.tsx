@@ -58,14 +58,41 @@ export default function PrintQR() {
             <QRCanvas url={shareInfo?.shareUrl || ''} size={512} />
           </div>
           {guide?.title && <h1 className="text-2xl font-bold no-print">{guide.title}</h1>}
-          <p className="no-print">Scannez ce QR code pour ouvrir le fichier HTML du guide. Hébergez ou partagez ce fichier avec le même nom pour garder le QR fonctionnel.</p>
-          {shareInfo?.shareUrl && (
-            <div className="no-print w-full max-w-lg mx-auto bg-gray-100 border border-gray-200 rounded px-3 py-3">
-              <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
-              <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
-              <p className="mt-2 text-xs text-gray-500">
-                Conservez ce nom lorsque vous diffusez le fichier HTML afin que le QR code reste valide.
-              </p>
+          {shareInfo?.hasHostedUrl ? (
+            <p className="text-base text-gray-700">Scannez ce QR code pour ouvrir le guide en ligne.</p>
+          ) : (
+            <div className="no-print w-full max-w-lg mx-auto bg-amber-50 border border-amber-200 text-amber-800 rounded px-3 py-3 space-y-1">
+              <p className="text-sm font-medium">⚠️ Configurez l'URL publique dans l'aperçu avant d'imprimer ce QR code.</p>
+              {shareInfo?.shareUrl && (
+                <p className="text-xs break-all">Lien temporaire: <code>{shareInfo.shareUrl}</code></p>
+              )}
+            </div>
+          )}
+          {shareInfo && (
+            <div className="no-print w-full max-w-lg mx-auto bg-gray-100 border border-gray-200 rounded px-3 py-3 space-y-2 text-left">
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">URL du guide</div>
+                <a
+                  href={shareInfo.shareUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-[var(--accent)] break-all hover:underline"
+                >
+                  {shareInfo.shareUrl}
+                </a>
+                <p className={`mt-1 text-xs ${shareInfo.hasHostedUrl ? 'text-gray-500' : 'text-amber-700'}`}>
+                  {shareInfo.hasHostedUrl
+                    ? 'Assurez-vous que ce lien reste accessible pour vos invités.'
+                    : "Hébergez le fichier HTML et enregistrez l'URL publique dans l'aperçu."}
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier HTML</div>
+                <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
+                <p className="mt-1 text-xs text-gray-500">
+                  Conservez ce nom lorsque vous diffusez le fichier HTML afin que le QR code construise la bonne URL.
+                </p>
+              </div>
             </div>
           )}
         </div>

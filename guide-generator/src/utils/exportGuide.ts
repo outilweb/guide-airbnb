@@ -113,16 +113,32 @@ const resolveShareBase = () => {
   return ''
 }
 
-export function guideShareUrl(meta: { guideId?: string; title?: string }) {
+const normalizeHostedUrl = (value?: string) => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return undefined
+  try {
+    const parsed = new URL(trimmed)
+    if (!/^https?:$/.test(parsed.protocol)) return undefined
+    return parsed.toString()
+  } catch {
+    return undefined
+  }
+}
+
+export function guideShareUrl(meta: { guideId?: string; title?: string; hostedHtmlUrl?: string }) {
+  const hosted = normalizeHostedUrl(meta.hostedHtmlUrl)
+  if (hosted) return hosted
   const fileName = guideFileName(meta)
   const base = resolveShareBase()
   return base ? `${base}/${fileName}` : fileName
 }
 
-export function guideShareInfo(meta: { guideId?: string; title?: string }) {
+export function guideShareInfo(meta: { guideId?: string; title?: string; hostedHtmlUrl?: string }) {
   const fileName = guideFileName(meta)
   const shareUrl = guideShareUrl(meta)
-  return { fileName, shareUrl }
+  const hosted = normalizeHostedUrl(meta.hostedHtmlUrl)
+  return { fileName, shareUrl, hasHostedUrl: Boolean(hosted) }
 }
 
 export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[] }): string {

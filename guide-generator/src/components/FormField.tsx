@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-export function Label({ children }: { children: ReactNode }) {
-  return <label className="block text-sm font-medium text-gray-700 mb-1">{children}</label>
+export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+  return <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700 mb-1">{children}</label>
 }
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {

@@ -10,6 +10,7 @@ export type Guide = {
   guideId?: string; // défini à la publication
   title: string;
   address?: string;
+  hostedHtmlUrl?: string;
   stay?: Stay;
   contact?: Contact;
   wifi?: Wifi;
