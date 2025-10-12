@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Card from '../components/Card'
-import { Input, Label } from '../components/FormField'
 import type { Guide } from '../types'
-import { loadDraft, publishGuide, saveDraft, sanitizeGuide } from '../utils/storage'
+import { loadDraft, publishGuide } from '../utils/storage'
 import { useNavigate } from 'react-router-dom'
 import QRCanvas from '../components/QRCanvas'
 import LeafletMap from '../components/LeafletMap'
@@ -10,28 +9,10 @@ import { downloadGuideHtml, guideShareInfo } from '../utils/exportGuide'
 import { formatPhoneFR, formatTimeDisplay } from '../utils/format'
 import { BRAND_URL } from '../config'
 
-const normalizeHostedUrl = (value: string): { normalized?: string; error?: string } => {
-  const trimmed = value.trim()
-  if (trimmed.length === 0) return { normalized: undefined }
-  try {
-    const parsed = new URL(trimmed)
-    if (!/^https?:$/.test(parsed.protocol)) {
-      return { error: 'Utilisez une URL qui commence par http:// ou https://.' }
-    }
-    return { normalized: parsed.toString() }
-  } catch {
-    return { error: 'URL invalide. Collez l’adresse publique complète du fichier HTML.' }
-  }
-}
-
 export default function Preview() {
   const [guide, setGuide] = useState<Guide | null>(null)
   const navigate = useNavigate()
   useEffect(() => setGuide(loadDraft()), [])
-  const [shareUrlInput, setShareUrlInput] = useState('')
-  const [shareUrlError, setShareUrlError] = useState<string | null>(null)
-  const [shareUrlStatus, setShareUrlStatus] = useState<'idle' | 'saved'>('idle')
-  const shareUrlStatusTimer = useRef<number | null>(null)
 
   const themeVars = useMemo(() => guide ? ({
     ['--primary' as any]: guide.theme.primary,
@@ -42,61 +23,6 @@ export default function Preview() {
 
   const isPublished = !!guide?.guideId
   const shareInfo = useMemo(() => (guide && guide.guideId ? guideShareInfo(guide) : null), [guide])
-  useEffect(() => {
-    setShareUrlInput(guide?.hostedHtmlUrl ?? '')
-  }, [guide?.hostedHtmlUrl])
-  useEffect(() => {
-    return () => {
-      if (shareUrlStatusTimer.current !== null) {
-        window.clearTimeout(shareUrlStatusTimer.current)
-        shareUrlStatusTimer.current = null
-      }
-    }
-  }, [])
-  const commitShareUrl = useCallback((raw: string) => {
-    if (!guide) return false
-    const { normalized, error } = normalizeHostedUrl(raw)
-    if (error) {
-      setShareUrlError(error)
-      return false
-    }
-    setShareUrlError(null)
-    setShareUrlStatus('idle')
-    const targetUrl = normalized ?? ''
-    const previousUrl = guide.hostedHtmlUrl ?? ''
-    const changed = previousUrl !== targetUrl
-    const updatedGuide = changed ? sanitizeGuide({ ...guide, hostedHtmlUrl: normalized }) : guide
-    if (changed) {
-      setGuide(updatedGuide)
-      saveDraft(updatedGuide)
-    }
-    setShareUrlInput(updatedGuide.hostedHtmlUrl ?? '')
-    setShareUrlStatus('saved')
-    if (shareUrlStatusTimer.current !== null) {
-      window.clearTimeout(shareUrlStatusTimer.current)
-    }
-    shareUrlStatusTimer.current = window.setTimeout(() => {
-      setShareUrlStatus('idle')
-      shareUrlStatusTimer.current = null
-    }, 2000)
-    return true
-  }, [guide, saveDraft, sanitizeGuide])
-
-  const handleShareUrlSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    commitShareUrl(shareUrlInput)
-  }, [commitShareUrl, shareUrlInput])
-
-  const handleShareUrlChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setShareUrlInput(event.target.value)
-    if (shareUrlError) setShareUrlError(null)
-    if (shareUrlStatus !== 'idle') setShareUrlStatus('idle')
-  }, [shareUrlError, shareUrlStatus])
-
-  const handleClearShareUrl = useCallback(() => {
-    setShareUrlInput('')
-    commitShareUrl('')
-  }, [commitShareUrl])
   const [downloadState, setDownloadState] = useState<'idle' | 'success' | 'error'>('idle')
   const homeAddress = (guide?.map?.homeAddress || guide?.address || '')
   // Combine explicit map points with recommendations.
@@ -349,50 +275,26 @@ export default function Preview() {
               {isPublished && shareInfo ? (
                 <>
                   <QRCanvas url={shareInfo.shareUrl} size={192} />
-                  {shareInfo.hasHostedUrl ? (
-                    <p className="text-sm text-gray-600">
-                      Le QR code ouvrira{' '}
-                      <a href={shareInfo.shareUrl} target="_blank" rel="noreferrer" className="text-[var(--accent)] underline break-all">
-                        {shareInfo.shareUrl}
-                      </a>.
-                    </p>
-                  ) : (
-                    <div className="w-full max-w-md text-left space-y-1 bg-amber-50 border border-amber-200 text-amber-800 rounded px-3 py-3">
-                      <p className="text-sm font-medium">Ajoutez l'URL publique du fichier HTML pour activer ce QR code.</p>
-                      <p className="text-xs break-all">Lien actuel: <code>{shareInfo.shareUrl}</code></p>
-                    </div>
-                  )}
-                  <form className="w-full max-w-md text-left space-y-2" onSubmit={handleShareUrlSubmit}>
-                    <div>
-                      <Label htmlFor="hosted-html-url">URL publique du guide HTML</Label>
-                      <Input
-                        id="hosted-html-url"
-                        placeholder="https://example.com/guide.html"
-                        value={shareUrlInput}
-                        onChange={handleShareUrlChange}
-                        autoComplete="url"
-                        inputMode="url"
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button className="btn btn-outline" type="submit">Enregistrer l'URL</button>
-                      {guide?.hostedHtmlUrl && (
-                        <button className="btn btn-ghost" type="button" onClick={handleClearShareUrl}>Effacer</button>
-                      )}
-                    </div>
-                    {shareUrlError && <p className="text-xs text-red-600">{shareUrlError}</p>}
-                    {shareUrlStatus === 'saved' && !shareUrlError && (
-                      <p className="text-xs text-green-600">URL enregistrée !</p>
-                    )}
-                    <p className="text-xs text-gray-500">
-                      Téléchargez le fichier HTML, hébergez-le en ligne (site web, Drive, Dropbox...) puis collez ici le lien complet.
-                    </p>
-                  </form>
-                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Nom du fichier</div>
+                  <p className="text-sm text-gray-600">
+                    Scannez ce QR code pour ouvrir le guide en ligne sur votre téléphone.
+                  </p>
+                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 text-left space-y-1">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Lien du guide</div>
+                    <a
+                      href={shareInfo.shareUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-[var(--accent)] break-all hover:underline"
+                    >
+                      {shareInfo.shareUrl}
+                    </a>
+                    <p className="text-xs text-gray-500">Partagez ou imprimez ce lien: vos invités y trouveront le guide à jour.</p>
+                  </div>
+                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 text-left space-y-1">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Fichier HTML téléchargé</div>
                     <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
-                    <p className="mt-2 text-xs text-gray-500">
-                      Conservez ce nom lorsque vous partagez le fichier HTML afin que le QR code reste valide.
+                    <p className="text-xs text-gray-500">
+                      Conservez ce nom si vous envoyez le fichier par email ou en pièce jointe.
                     </p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">

@@ -101,10 +101,6 @@ function ensureGuideShape(raw: any): Guide {
     guideId: typeof raw?.guideId === 'string' ? raw.guideId : undefined,
     title: typeof raw?.title === 'string' ? raw.title : '',
     address: toOptionalString(raw?.address),
-    hostedHtmlUrl: (() => {
-      const url = toOptionalString(raw?.hostedHtmlUrl)?.trim()
-      return url && url.length > 0 ? url : undefined
-    })(),
     stay,
     contact,
     wifi,

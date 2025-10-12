@@ -1,6 +1,6 @@
 import type { Guide } from '../types'
 import { formatPhoneFR, formatTimeDisplay } from './format'
-import { GUIDE_SHARE_BASE } from '../config'
+import { GUIDE_SHARE_BASE, BRAND_URL } from '../config'
 import type { GeocodedPoint, PointInput } from './geocode'
 import { geocodePoints } from './geocode'
 
@@ -107,38 +107,28 @@ export function guideFileName(meta: { guideId?: string; title?: string }): strin
   return `${stem}.html`
 }
 
-const resolveShareBase = () => {
-  if (GUIDE_SHARE_BASE && GUIDE_SHARE_BASE.length > 0) return GUIDE_SHARE_BASE
+const resolveShareOrigin = () => {
+  if (GUIDE_SHARE_BASE && GUIDE_SHARE_BASE.length > 0) return GUIDE_SHARE_BASE.replace(/\/+$/, '')
   if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin.replace(/\/+$/, '')
+  if (BRAND_URL && BRAND_URL.length > 0) return BRAND_URL.replace(/\/+$/, '')
   return ''
 }
 
-const normalizeHostedUrl = (value?: string) => {
-  if (!value) return undefined
-  const trimmed = value.trim()
-  if (trimmed.length === 0) return undefined
-  try {
-    const parsed = new URL(trimmed)
-    if (!/^https?:$/.test(parsed.protocol)) return undefined
-    return parsed.toString()
-  } catch {
-    return undefined
+export function guideShareUrl(meta: { guideId?: string }) {
+  const origin = resolveShareOrigin()
+  if (!meta.guideId) return origin
+  const normalized = origin.replace(/\/+$/, '')
+  if (!normalized) return `#/guide/${meta.guideId}`
+  if (normalized.includes('#')) {
+    return `${normalized}${normalized.endsWith('/') ? '' : '/'}${meta.guideId}`
   }
+  return `${normalized}/#/guide/${meta.guideId}`
 }
 
-export function guideShareUrl(meta: { guideId?: string; title?: string; hostedHtmlUrl?: string }) {
-  const hosted = normalizeHostedUrl(meta.hostedHtmlUrl)
-  if (hosted) return hosted
-  const fileName = guideFileName(meta)
-  const base = resolveShareBase()
-  return base ? `${base}/${fileName}` : fileName
-}
-
-export function guideShareInfo(meta: { guideId?: string; title?: string; hostedHtmlUrl?: string }) {
+export function guideShareInfo(meta: { guideId?: string; title?: string }) {
   const fileName = guideFileName(meta)
   const shareUrl = guideShareUrl(meta)
-  const hosted = normalizeHostedUrl(meta.hostedHtmlUrl)
-  return { fileName, shareUrl, hasHostedUrl: Boolean(hosted) }
+  return { fileName, shareUrl }
 }
 
 export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[] }): string {

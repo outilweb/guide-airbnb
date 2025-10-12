@@ -84,16 +84,12 @@ export default function MyGuides() {
                   <div className="text-sm text-gray-500 flex flex-col items-start sm:items-end gap-1">
                     <span>Créé le {formatDateTime(guide.createdAt)}</span>
                     <span>Fichier HTML : <code>{share.fileName}</code></span>
-                    {share.hasHostedUrl ? (
-                      <span>
-                        URL publique :{' '}
-                        <a href={share.shareUrl} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline break-all">
-                          {share.shareUrl}
-                        </a>
-                      </span>
-                    ) : (
-                      <span className="text-sm text-amber-600">URL publique non configurée</span>
-                    )}
+                    <span>
+                      URL publique :{' '}
+                      <a href={share.shareUrl} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline break-all">
+                        {share.shareUrl}
+                      </a>
+                    </span>
                     <span>Aperçu interne: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
                   </div>
                 </div>
