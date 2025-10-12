@@ -54,6 +54,7 @@ export default function Preview() {
     }
   }, [])
   const commitShareUrl = useCallback((raw: string) => {
+    if (!guide) return false
     const { normalized, error } = normalizeHostedUrl(raw)
     if (error) {
       setShareUrlError(error)
@@ -62,36 +63,24 @@ export default function Preview() {
     setShareUrlError(null)
     setShareUrlStatus('idle')
     const targetUrl = normalized ?? ''
-    let previousUrl = ''
-    let updatedGuide: Guide | null = null
-    setGuide((prev) => {
-      if (!prev) return prev
-      previousUrl = prev.hostedHtmlUrl ?? ''
-      if (previousUrl === targetUrl) {
-        updatedGuide = prev
-        return prev
-      }
-      const nextGuide = sanitizeGuide({ ...prev, hostedHtmlUrl: normalized })
-      updatedGuide = nextGuide
-      return nextGuide
-    })
+    const previousUrl = guide.hostedHtmlUrl ?? ''
     const changed = previousUrl !== targetUrl
-    if (updatedGuide) {
-      if (changed) {
-        saveDraft(updatedGuide)
-      }
-      setShareUrlInput(updatedGuide.hostedHtmlUrl ?? '')
-      setShareUrlStatus('saved')
-      if (shareUrlStatusTimer.current !== null) {
-        window.clearTimeout(shareUrlStatusTimer.current)
-      }
-      shareUrlStatusTimer.current = window.setTimeout(() => {
-        setShareUrlStatus('idle')
-        shareUrlStatusTimer.current = null
-      }, 2000)
+    const updatedGuide = changed ? sanitizeGuide({ ...guide, hostedHtmlUrl: normalized }) : guide
+    if (changed) {
+      setGuide(updatedGuide)
+      saveDraft(updatedGuide)
     }
+    setShareUrlInput(updatedGuide.hostedHtmlUrl ?? '')
+    setShareUrlStatus('saved')
+    if (shareUrlStatusTimer.current !== null) {
+      window.clearTimeout(shareUrlStatusTimer.current)
+    }
+    shareUrlStatusTimer.current = window.setTimeout(() => {
+      setShareUrlStatus('idle')
+      shareUrlStatusTimer.current = null
+    }, 2000)
     return true
-  }, [saveDraft, sanitizeGuide])
+  }, [guide, saveDraft, sanitizeGuide])
 
   const handleShareUrlSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
