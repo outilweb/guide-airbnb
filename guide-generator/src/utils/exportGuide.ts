@@ -93,18 +93,10 @@ const computeMapPoints = (guide: Guide): MapPoint[] => {
 }
 
 const STATIC_MAP_MAX_POINTS = 6
-const STATIC_MAP_BASE_URL = 'https://static-maps.yandex.ru/1.x/'
-const STATIC_MAP_SIZE = '650,360'
-
-const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader()
-  reader.onloadend = () => {
-    if (typeof reader.result === 'string') resolve(reader.result)
-    else reject(new Error('Impossible de lire la carte statique'))
-  }
-  reader.onerror = () => reject(reader.error ?? new Error('Lecture de la carte statique échouée'))
-  reader.readAsDataURL(blob)
-})
+const STATIC_MAP_WIDTH = 720
+const STATIC_MAP_HEIGHT = 360
+const TILE_SIZE = 256
+const TILE_SERVER = 'https://tile.openstreetmap.org'
 
 const estimateZoom = (points: GeocodedPoint[]) => {
   if (points.length <= 1) return 15
@@ -132,38 +124,97 @@ const estimateZoom = (points: GeocodedPoint[]) => {
   return 15
 }
 
-const buildStaticMapUrl = (points: GeocodedPoint[]) => {
-  if (points.length === 0) return ''
-  const subset = points.slice(0, STATIC_MAP_MAX_POINTS)
-  const homePoint = points.find((point) => point.id === 'home') ?? points[0]
-  const zoom = estimateZoom(points)
-  const lon = (value: number) => value.toFixed(6)
-  const lat = (value: number) => value.toFixed(6)
-  const markerStyles = subset.map((point) => {
-    const style = point.id === 'home' ? 'pm2rdm' : 'pm2blm'
-    return `${lon(point.lng)},${lat(point.lat)},${style}`
-  }).join('~')
-  const params = new URLSearchParams({
-    ll: `${lon(homePoint.lng)},${lat(homePoint.lat)}`,
-    size: STATIC_MAP_SIZE,
-    z: String(zoom),
-    l: 'map',
-    lang: 'fr_FR',
-    scale: '1',
-  })
-  if (markerStyles.length > 0) params.set('pt', markerStyles)
-  return `${STATIC_MAP_BASE_URL}?${params.toString()}`
+const latLngToPixel = (lat: number, lng: number, zoom: number) => {
+  const sinLat = Math.sin((lat * Math.PI) / 180)
+  const scale = TILE_SIZE * 2 ** zoom
+  const x = ((lng + 180) / 360) * scale
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale
+  return { x, y }
 }
+
+const loadTileImage = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => resolve(img)
+  img.onerror = () => reject(new Error(`Impossible de charger la tuile ${src}`))
+  img.src = src
+})
 
 const fetchStaticMapDataUrl = async (points: GeocodedPoint[]): Promise<string | null> => {
   try {
-    if (typeof fetch !== 'function') return null
-    const url = buildStaticMapUrl(points)
-    if (!url) return null
-    const response = await fetch(url, { mode: 'cors' })
-    if (!response.ok) return null
-    const blob = await response.blob()
-    return await toDataUrl(blob)
+    if (typeof document === 'undefined' || points.length === 0) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = STATIC_MAP_WIDTH
+    canvas.height = STATIC_MAP_HEIGHT
+    const context = canvas.getContext('2d')
+    if (!context) return null
+
+    context.fillStyle = '#e5f0ff'
+    context.fillRect(0, 0, STATIC_MAP_WIDTH, STATIC_MAP_HEIGHT)
+
+    const subset = points.slice(0, STATIC_MAP_MAX_POINTS)
+    const zoom = Math.min(16, Math.max(3, estimateZoom(points) + 1))
+
+    const centerLat = subset.reduce((acc, point) => acc + point.lat, 0) / subset.length
+    const centerLng = subset.reduce((acc, point) => acc + point.lng, 0) / subset.length
+    const centerPixel = latLngToPixel(centerLat, centerLng, zoom)
+    const startX = centerPixel.x - STATIC_MAP_WIDTH / 2
+    const startY = centerPixel.y - STATIC_MAP_HEIGHT / 2
+
+    const startTileX = Math.floor(startX / TILE_SIZE)
+    const endTileX = Math.floor((startX + STATIC_MAP_WIDTH) / TILE_SIZE)
+    const startTileY = Math.floor(startY / TILE_SIZE)
+    const endTileY = Math.floor((startY + STATIC_MAP_HEIGHT) / TILE_SIZE)
+    const tileRange = 2 ** zoom
+
+    const tilePromises: Promise<void>[] = []
+    for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
+      for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
+        if (tileY < 0 || tileY >= tileRange) continue
+        const wrappedX = ((tileX % tileRange) + tileRange) % tileRange
+        const dx = Math.round(tileX * TILE_SIZE - startX)
+        const dy = Math.round(tileY * TILE_SIZE - startY)
+        const src = `${TILE_SERVER}/${zoom}/${wrappedX}/${tileY}.png`
+        tilePromises.push(
+          loadTileImage(src)
+            .then((image) => {
+              context.drawImage(image, dx, dy, TILE_SIZE, TILE_SIZE)
+            })
+            .catch(() => {
+              context.fillStyle = '#d1d5db'
+              context.fillRect(dx, dy, TILE_SIZE, TILE_SIZE)
+            }),
+        )
+      }
+    }
+
+    await Promise.all(tilePromises)
+
+    subset.forEach((point) => {
+      const pixel = latLngToPixel(point.lat, point.lng, zoom)
+      const x = pixel.x - startX
+      const y = pixel.y - startY
+      const isHome = point.id === 'home'
+      const radius = 10
+
+      context.fillStyle = isHome ? '#dc2626' : '#2563eb'
+      context.strokeStyle = '#ffffff'
+      context.lineWidth = 4
+      context.beginPath()
+      context.arc(x, y, radius, 0, Math.PI * 2)
+      context.fill()
+      context.stroke()
+
+      context.fillStyle = '#ffffff'
+      context.font = '700 11px Inter, sans-serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      if (isHome) {
+        context.fillText('🏠', x, y - radius - 8)
+      }
+    })
+
+    return canvas.toDataURL('image/png')
   } catch (error) {
     console.warn('Capture de la carte statique impossible', error)
     return null

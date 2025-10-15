@@ -11,9 +11,9 @@ export const BRAND_URL: string = brand && brand.length > 0
   : 'https://guide-airbnb.vercel.app'
 
 const qrTarget = toString(rawEnv.VITE_QR_TARGET_URL)?.trim()
-export const QR_TARGET_URL: string = qrTarget && qrTarget.length > 0
+export const QR_TARGET_URL: string | undefined = qrTarget && qrTarget.length > 0
   ? qrTarget
-  : 'https://guide-airbnb.vercel.app/qr-photo.png'
+  : undefined
 
 const shareBaseRaw = toString(rawEnv.VITE_GUIDE_SHARE_BASE)?.trim()
 export const GUIDE_SHARE_BASE: string = shareBaseRaw && shareBaseRaw.length > 0
