@@ -92,6 +92,78 @@ const computeMapPoints = (guide: Guide): MapPoint[] => {
   })
 }
 
+const STATIC_MAP_MAX_POINTS = 6
+const STATIC_MAP_BASE_URL = 'https://staticmap.openstreetmap.de/staticmap.php'
+
+const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onloadend = () => {
+    if (typeof reader.result === 'string') resolve(reader.result)
+    else reject(new Error('Impossible de lire la carte statique'))
+  }
+  reader.onerror = () => reject(reader.error ?? new Error('Lecture de la carte statique échouée'))
+  reader.readAsDataURL(blob)
+})
+
+const estimateZoom = (points: GeocodedPoint[]) => {
+  if (points.length <= 1) return 15
+  let minLat = points[0].lat
+  let maxLat = points[0].lat
+  let minLng = points[0].lng
+  let maxLng = points[0].lng
+  points.forEach((point) => {
+    if (point.lat < minLat) minLat = point.lat
+    if (point.lat > maxLat) maxLat = point.lat
+    if (point.lng < minLng) minLng = point.lng
+    if (point.lng > maxLng) maxLng = point.lng
+  })
+  const avgLat = (minLat + maxLat) / 2
+  const latSpan = maxLat - minLat
+  const lngSpan = (maxLng - minLng) * Math.cos((avgLat * Math.PI) / 180)
+  const span = Math.max(latSpan, Math.abs(lngSpan))
+  if (span > 5) return 8
+  if (span > 2) return 9
+  if (span > 1) return 10
+  if (span > 0.5) return 11
+  if (span > 0.2) return 12
+  if (span > 0.08) return 13
+  if (span > 0.03) return 14
+  return 15
+}
+
+const buildStaticMapUrl = (points: GeocodedPoint[]) => {
+  if (points.length === 0) return ''
+  const subset = points.slice(0, STATIC_MAP_MAX_POINTS)
+  const homePoint = points.find((point) => point.id === 'home') ?? points[0]
+  const zoom = estimateZoom(points)
+  const params = new URLSearchParams({
+    center: `${homePoint.lat.toFixed(6)},${homePoint.lng.toFixed(6)}`,
+    zoom: String(zoom),
+    size: '720x360',
+    maptype: 'mapnik',
+  })
+  subset.forEach((point) => {
+    const marker = `${point.lat.toFixed(6)},${point.lng.toFixed(6)},${point.id === 'home' ? 'red-pushpin' : 'lightblue1'}`
+    params.append('markers', marker)
+  })
+  return `${STATIC_MAP_BASE_URL}?${params.toString()}`
+}
+
+const fetchStaticMapDataUrl = async (points: GeocodedPoint[]): Promise<string | null> => {
+  try {
+    if (typeof fetch !== 'function') return null
+    const url = buildStaticMapUrl(points)
+    if (!url) return null
+    const response = await fetch(url, { mode: 'cors' })
+    if (!response.ok) return null
+    const blob = await response.blob()
+    return await toDataUrl(blob)
+  } catch (error) {
+    console.warn('Capture de la carte statique impossible', error)
+    return null
+  }
+}
+
 const makeFileStem = (meta: { guideId?: string; title?: string }) => {
   const slug = meta.title ? slugify(meta.title) : ''
   const idSegment = meta.guideId ? meta.guideId.slice(0, 8).toLowerCase() : ''
@@ -131,7 +203,7 @@ export function guideShareInfo(meta: { guideId?: string; title?: string }) {
   return { fileName, shareUrl }
 }
 
-export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[] }): string {
+export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[]; staticMapDataUrl?: string | null }): string {
   const primary = sanitizeColor(guide.theme?.primary, '#2c3e50')
   const accent = sanitizeColor(guide.theme?.accent, '#3498db')
   const fontHeading = sanitizeFont(guide.theme?.fontHeading, 'Inter')
@@ -157,6 +229,8 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
   }))
   const hasInteractiveMap = mapData.length > 0
   const mapJson = hasInteractiveMap ? escapeForScript(JSON.stringify(mapData)) : ''
+  const staticMapDataUrl = options?.staticMapDataUrl || ''
+  const hasStaticMapImage = staticMapDataUrl.length > 0
   const googleMapsDirectionsUrl = homeAddress && mapPoints.length > 0
     ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(homeAddress)}&destination=${encodeURIComponent(homeAddress)}&waypoints=${encodeURIComponent(mapPoints.map((point) => point.address || point.label || '').filter((value) => value && value.trim().length > 0).join('|'))}`
     : ''
@@ -256,9 +330,10 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
       <section class="block">
         <div class="card">
           <div class="section-title">🗺️ Carte & liens</div>
-          ${hasInteractiveMap ? `
-            <div class="map-shell">
-              <div id="guide-map" aria-label="Carte interactive des environs"></div>
+          ${(hasInteractiveMap || hasStaticMapImage) ? `
+            <div class="map-shell${hasInteractiveMap ? ' map-shell--interactive' : ''}${hasStaticMapImage ? ' map-shell--has-static' : ''}"${hasInteractiveMap ? ' id="guide-map-shell"' : ''}>
+              ${hasStaticMapImage ? `<img src="${escapeHtml(staticMapDataUrl)}" alt="Carte des environs" class="map-static" id="guide-map-static" />` : ''}
+              ${hasInteractiveMap ? `<div id="guide-map" aria-label="Carte interactive des environs"></div>` : ''}
             </div>
           ` : ''}
           ${homeAddress ? `<p class="map-address">Adresse du logement&nbsp;: ${escapeHtml(homeAddress)}</p>` : ''}
@@ -273,6 +348,7 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
               `).join('')}
             </ul>
           ` : ''}
+          ${(!hasInteractiveMap && hasStaticMapImage) ? `<p class="map-fallback">La carte interactive n'est pas disponible hors connexion. L'image ci-dessus montre l'emplacement des points clés.</p>` : ''}
           ${googleMapsDirectionsUrl ? `<p class="map-tip">Astuce&nbsp;: cliquez sur «&nbsp;Ouvrir la carte avec tous les points&nbsp;» pour voir les marqueurs sur Google Maps.</p>` : ''}
           ${googleMapsDirectionsUrl ? `<a class="map-open" href="${escapeHtml(googleMapsDirectionsUrl)}" target="_blank" rel="noreferrer">Ouvrir la carte avec tous les points</a>` : ''}
           ${links.length > 0 ? `
@@ -313,6 +389,11 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
             if (DATA.length === 1) map.setView(bounds.getCenter(), 15);
             else map.fitBounds(bounds.pad(0.2));
           }
+          window.setTimeout(function() { map.invalidateSize(); }, 120);
+          var shell = container.parentElement;
+          if (shell && shell.classList) shell.classList.add('map-shell--ready');
+          var staticImage = document.getElementById('guide-map-static');
+          if (staticImage) staticImage.setAttribute('aria-hidden', 'true');
         }
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
           initialiseMap();
@@ -399,11 +480,19 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
       .muted { color: #6b7280; }
       .bold { font-weight: 600; color: #111827; }
       .list { list-style: disc; padding-left: 20px; margin: 0; display: grid; gap: 8px; }
-      .map-shell { margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02); }
-      #guide-map { width: 100%; height: 320px; }
+      .map-shell { margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02); background: #f8fafc; position: relative; }
+      .map-shell--interactive { height: 320px; }
+      .map-shell--interactive #guide-map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.3s ease; }
+      .map-shell--ready #guide-map { opacity: 1; }
+      .map-static { display: block; width: 100%; height: auto; }
+      .map-shell--interactive .map-static { height: 100%; object-fit: cover; }
+      .map-shell--has-static .map-static { transition: opacity 0.3s ease; }
+      .map-shell--ready.map-shell--has-static .map-static { opacity: 0; pointer-events: none; }
+      #guide-map { width: 100%; height: 100%; min-height: 200px; }
       .map-address { margin: 8px 0 0; font-size: 0.95rem; color: #374151; }
       .map-list { margin-top: 12px; }
       .map-list li { font-size: 0.95rem; color: #1f2937; }
+      .map-fallback { margin-top: 12px; font-size: 0.85rem; color: #6b7280; }
       .map-tip { margin-top: 12px; font-size: 0.8rem; color: #6b7280; }
       .map-open { display: inline-block; margin-top: 4px; font-size: 0.9rem; font-weight: 600; text-decoration: underline; color: var(--accent); }
       .map-links { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; }
@@ -475,6 +564,7 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
 export async function createGuideHtmlBlob(guide: Guide) {
   const fileName = guideFileName({ guideId: guide.guideId, title: guide.title })
   let geocoded: GeocodedPoint[] = []
+  let staticMapDataUrl: string | null = null
   try {
     const inputs: PointInput[] = []
     const homeAddress = guide.map?.homeAddress || guide.address || ''
@@ -487,12 +577,15 @@ export async function createGuideHtmlBlob(guide: Guide) {
     })
     if (inputs.length > 0) {
       geocoded = await geocodePoints(inputs, { contextAddress: homeAddress })
+      if (geocoded.length > 0) {
+        staticMapDataUrl = await fetchStaticMapDataUrl(geocoded)
+      }
     }
   } catch (error) {
     console.error('Impossible de géocoder les points du guide exporté', error)
   }
 
-  const html = renderGuideHtml(guide, { geocodedPoints: geocoded })
+  const html = renderGuideHtml(guide, { geocodedPoints: geocoded, staticMapDataUrl })
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
   return { fileName, blob }
 }
