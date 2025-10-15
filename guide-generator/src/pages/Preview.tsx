@@ -275,28 +275,6 @@ export default function Preview() {
               {isPublished && shareInfo ? (
                 <>
                   <QRCanvas url={shareInfo.shareUrl} size={192} />
-                  <p className="text-sm text-gray-600">
-                    Scannez ce QR code pour ouvrir le guide en ligne sur votre téléphone.
-                  </p>
-                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 text-left space-y-1">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Lien du guide</div>
-                    <a
-                      href={shareInfo.shareUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-[var(--accent)] break-all hover:underline"
-                    >
-                      {shareInfo.shareUrl}
-                    </a>
-                    <p className="text-xs text-gray-500">Partagez ou imprimez ce lien: vos invités y trouveront le guide à jour.</p>
-                  </div>
-                  <div className="w-full max-w-md bg-gray-100 border border-gray-200 rounded px-3 py-3 text-left space-y-1">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Fichier HTML téléchargé</div>
-                    <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
-                    <p className="text-xs text-gray-500">
-                      Conservez ce nom si vous envoyez le fichier par email ou en pièce jointe.
-                    </p>
-                  </div>
                   <div className="flex flex-wrap justify-center gap-2">
                     <button
                       className="btn btn-primary"

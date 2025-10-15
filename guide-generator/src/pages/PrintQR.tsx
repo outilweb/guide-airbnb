@@ -57,33 +57,6 @@ export default function PrintQR() {
           <div className="mx-auto" style={{ width: 512 }}>
             <QRCanvas url={shareInfo?.shareUrl || ''} size={512} />
           </div>
-          {guide?.title && <h1 className="text-2xl font-bold no-print">{guide.title}</h1>}
-          <p className="text-base text-gray-700">Scannez ce QR code pour ouvrir le guide en ligne immédiatement.</p>
-          {shareInfo && (
-            <div className="no-print w-full max-w-lg mx-auto bg-gray-100 border border-gray-200 rounded px-3 py-3 space-y-3 text-left">
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Lien en ligne</div>
-                <a
-                  href={shareInfo.shareUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-[var(--accent)] break-all hover:underline"
-                >
-                  {shareInfo.shareUrl}
-                </a>
-                <p className="mt-1 text-xs text-gray-500">
-                  Ce lien dirige toujours vers la version publiée du guide.
-                </p>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Fichier HTML</div>
-                <span className="text-sm text-gray-700 break-all">{shareInfo.fileName}</span>
-                <p className="mt-1 text-xs text-gray-500">
-                  Téléchargez ce fichier si vous souhaitez diffuser le guide hors connexion.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       <div className="no-print mt-4 flex flex-wrap gap-2">

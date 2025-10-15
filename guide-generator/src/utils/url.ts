@@ -5,8 +5,8 @@ type GuideShareMeta = Pick<Guide, 'guideId' | 'title'> | { guideId?: string; tit
 
 export function publicGuideUrl(meta: GuideShareMeta) {
   if (!meta?.guideId) return ''
-  const { shareUrl } = guideShareInfo(meta)
-  return shareUrl
+  const { guideUrl } = guideShareInfo(meta)
+  return guideUrl
 }
 
 export function publicGuideFileName(meta: GuideShareMeta) {

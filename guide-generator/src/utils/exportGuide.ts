@@ -1,6 +1,6 @@
 import type { Guide } from '../types'
 import { formatPhoneFR, formatTimeDisplay } from './format'
-import { GUIDE_SHARE_BASE, BRAND_URL } from '../config'
+import { GUIDE_SHARE_BASE, BRAND_URL, QR_TARGET_URL } from '../config'
 import type { GeocodedPoint, PointInput } from './geocode'
 import { geocodePoints } from './geocode'
 
@@ -93,7 +93,8 @@ const computeMapPoints = (guide: Guide): MapPoint[] => {
 }
 
 const STATIC_MAP_MAX_POINTS = 6
-const STATIC_MAP_BASE_URL = 'https://staticmap.openstreetmap.de/staticmap.php'
+const STATIC_MAP_BASE_URL = 'https://static-maps.yandex.ru/1.x/'
+const STATIC_MAP_SIZE = '650,360'
 
 const toDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader()
@@ -136,16 +137,21 @@ const buildStaticMapUrl = (points: GeocodedPoint[]) => {
   const subset = points.slice(0, STATIC_MAP_MAX_POINTS)
   const homePoint = points.find((point) => point.id === 'home') ?? points[0]
   const zoom = estimateZoom(points)
+  const lon = (value: number) => value.toFixed(6)
+  const lat = (value: number) => value.toFixed(6)
+  const markerStyles = subset.map((point) => {
+    const style = point.id === 'home' ? 'pm2rdm' : 'pm2blm'
+    return `${lon(point.lng)},${lat(point.lat)},${style}`
+  }).join('~')
   const params = new URLSearchParams({
-    center: `${homePoint.lat.toFixed(6)},${homePoint.lng.toFixed(6)}`,
-    zoom: String(zoom),
-    size: '720x360',
-    maptype: 'mapnik',
+    ll: `${lon(homePoint.lng)},${lat(homePoint.lat)}`,
+    size: STATIC_MAP_SIZE,
+    z: String(zoom),
+    l: 'map',
+    lang: 'fr_FR',
+    scale: '1',
   })
-  subset.forEach((point) => {
-    const marker = `${point.lat.toFixed(6)},${point.lng.toFixed(6)},${point.id === 'home' ? 'red-pushpin' : 'lightblue1'}`
-    params.append('markers', marker)
-  })
+  if (markerStyles.length > 0) params.set('pt', markerStyles)
   return `${STATIC_MAP_BASE_URL}?${params.toString()}`
 }
 
@@ -199,8 +205,9 @@ export function guideShareUrl(meta: { guideId?: string }) {
 
 export function guideShareInfo(meta: { guideId?: string; title?: string }) {
   const fileName = guideFileName(meta)
-  const shareUrl = guideShareUrl(meta)
-  return { fileName, shareUrl }
+  const defaultUrl = guideShareUrl(meta)
+  const shareUrl = QR_TARGET_URL && QR_TARGET_URL.trim().length > 0 ? QR_TARGET_URL : defaultUrl
+  return { fileName, shareUrl, guideUrl: defaultUrl }
 }
 
 export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: GeocodedPoint[]; staticMapDataUrl?: string | null }): string {

@@ -86,8 +86,8 @@ export default function MyGuides() {
                     <span>Fichier HTML : <code>{share.fileName}</code></span>
                     <span>
                       URL publique :{' '}
-                      <a href={share.shareUrl} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline break-all">
-                        {share.shareUrl}
+                      <a href={share.guideUrl} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline break-all">
+                        {share.guideUrl}
                       </a>
                     </span>
                     <span>Aperçu interne: <a href={`#/guide/${guide.guideId}`} className="text-[var(--accent)] hover:underline">Ouvrir</a></span>
