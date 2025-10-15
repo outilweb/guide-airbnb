@@ -140,6 +140,7 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
   const welcome = guide.theme?.welcomeMessage || ''
   const title = guide.title || 'Guide du logement'
   const address = guide.address || ''
+  const homeAddress = (guide.map?.homeAddress || guide.address || '').trim()
   const mapPoints = computeMapPoints(guide)
   const rules = guide.rules || []
   const places = guide.places || []
@@ -156,6 +157,9 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
   }))
   const hasInteractiveMap = mapData.length > 0
   const mapJson = hasInteractiveMap ? escapeForScript(JSON.stringify(mapData)) : ''
+  const googleMapsDirectionsUrl = homeAddress && mapPoints.length > 0
+    ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(homeAddress)}&destination=${encodeURIComponent(homeAddress)}&waypoints=${encodeURIComponent(mapPoints.map((point) => point.address || point.label || '').filter((value) => value && value.trim().length > 0).join('|'))}`
+    : ''
 
   const contactBlocks: string[] = []
   if (guide.contact?.name) contactBlocks.push(`<div><span class="label">Nom</span><span>${escapeHtml(guide.contact.name)}</span></div>`) 
@@ -247,32 +251,33 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
     `
     : ''
 
-  const mapBlock = mapPoints.length > 0 || guide.map?.homeAddress || links.length > 0
+  const mapBlock = mapPoints.length > 0 || homeAddress || links.length > 0
     ? `
       <section class="block">
         <div class="card">
-          <div class="section-title">🗺️ Accès & environs</div>
-          ${guide.map?.homeAddress ? `<p class="muted">Adresse du logement : ${escapeHtml(guide.map.homeAddress)}</p>` : ''}
+          <div class="section-title">🗺️ Carte & liens</div>
           ${hasInteractiveMap ? `
             <div class="map-shell">
               <div id="guide-map" aria-label="Carte interactive des environs"></div>
             </div>
-            <p class="map-note">Déplacez-vous sur la carte pour explorer les environs. Cliquez sur un repère pour obtenir l'itinéraire.</p>
           ` : ''}
+          ${homeAddress ? `<p class="map-address">Adresse du logement&nbsp;: ${escapeHtml(homeAddress)}</p>` : ''}
           ${mapPoints.length > 0 ? `
-            <ul class="list">
+            <ul class="list map-list">
               ${mapPoints.map((point) => `
                 <li>
                   <span class="bold">${escapeHtml(point.label || '')}</span>
                   ${point.address ? ` – ${escapeHtml(point.address)}` : ''}
-                  ${point.mapsUrl ? ` <a href="${escapeHtml(point.mapsUrl)}" target="_blank" rel="noreferrer">(Itinéraire)</a>` : ''}
+                  ${point.mapsUrl ? ` <a href="${escapeHtml(point.mapsUrl)}" target="_blank" rel="noreferrer">(Maps)</a>` : ''}
                 </li>
               `).join('')}
             </ul>
           ` : ''}
+          ${googleMapsDirectionsUrl ? `<p class="map-tip">Astuce&nbsp;: cliquez sur «&nbsp;Ouvrir la carte avec tous les points&nbsp;» pour voir les marqueurs sur Google Maps.</p>` : ''}
+          ${googleMapsDirectionsUrl ? `<a class="map-open" href="${escapeHtml(googleMapsDirectionsUrl)}" target="_blank" rel="noreferrer">Ouvrir la carte avec tous les points</a>` : ''}
           ${links.length > 0 ? `
-            <div class="badge-row">
-              ${links.map((link) => `<a class="badge" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>`).join('')}
+            <div class="map-links">
+              ${links.map((link) => `<a class="map-link" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.url)}</a>`).join('')}
             </div>
           ` : ''}
         </div>
@@ -321,15 +326,15 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
   const emergenciesBlock = `
     <section class="block">
       <div class="card">
-        <div class="section-title">☎️ Numéros d'urgence</div>
+        <div class="section-title">☎️ Urgences</div>
         <div class="emergency-grid">
           ${[
-            { code: '112', label: 'Urgences européennes' },
-            { code: '15', label: 'SAMU' },
-            { code: '18', label: 'Pompiers' },
-            { code: '17', label: 'Police' },
+            { code: '112', label: 'Urgences', tone: 'red' },
+            { code: '15', label: 'SAMU', tone: 'blue' },
+            { code: '18', label: 'Pompiers', tone: 'red' },
+            { code: '17', label: 'Police', tone: 'blue' },
           ].map((item) => `
-            <div class="emergency-card">
+            <div class="emergency-card emergency-card--${item.tone}">
               <div class="emergency-code">${item.code}</div>
               <div class="emergency-label">${item.label}</div>
             </div>
@@ -394,11 +399,15 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
       .muted { color: #6b7280; }
       .bold { font-weight: 600; color: #111827; }
       .list { list-style: disc; padding-left: 20px; margin: 0; display: grid; gap: 8px; }
-      .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-      .badge { display: inline-flex; align-items: center; padding: 6px 12px; background: rgba(52, 152, 219, 0.12); border-radius: 999px; font-size: 0.8rem; text-decoration: none; }
       .map-shell { margin: 16px 0; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.02); }
       #guide-map { width: 100%; height: 320px; }
-      .map-note { font-size: 0.75rem; color: #6b7280; margin-top: 8px; }
+      .map-address { margin: 8px 0 0; font-size: 0.95rem; color: #374151; }
+      .map-list { margin-top: 12px; }
+      .map-list li { font-size: 0.95rem; color: #1f2937; }
+      .map-tip { margin-top: 12px; font-size: 0.8rem; color: #6b7280; }
+      .map-open { display: inline-block; margin-top: 4px; font-size: 0.9rem; font-weight: 600; text-decoration: underline; color: var(--accent); }
+      .map-links { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; }
+      .map-link { font-size: 0.9rem; text-decoration: underline; color: var(--accent); }
       .place-stack { display: grid; gap: 16px; }
       .place { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
       .place-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; color: var(--accent); }
@@ -406,10 +415,16 @@ export function renderGuideHtml(guide: Guide, options?: { geocodedPoints?: Geoco
       .links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.9rem; margin-top: 8px; }
       .rich { white-space: pre-line; }
       .brand { display: block; margin: 0 auto 16px; max-width: 140px; }
-      .emergency-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-      .emergency-card { border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(254, 242, 242, 0.8); border-radius: 14px; padding: 20px; text-align: center; }
-      .emergency-code { font-size: 2.5rem; font-weight: 700; color: #dc2626; }
-      .emergency-label { margin-top: 4px; font-weight: 600; color: #991b1b; }
+      .emergency-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+      .emergency-card { border-radius: 18px; padding: 28px 20px; text-align: center; border: 1px solid transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; }
+      .emergency-card--red { border-color: rgba(239, 68, 68, 0.25); background: #fef2f2; }
+      .emergency-card--blue { border-color: rgba(59, 130, 246, 0.25); background: #eff6ff; }
+      .emergency-card--red .emergency-code,
+      .emergency-card--red .emergency-label { color: #dc2626; }
+      .emergency-card--blue .emergency-code,
+      .emergency-card--blue .emergency-label { color: #2563eb; }
+      .emergency-code { font-size: 3rem; font-weight: 700; line-height: 1; }
+      .emergency-label { margin-top: 8px; font-size: 1.1rem; font-weight: 600; color: #1f2937; }
       footer { text-align: center; font-size: 0.75rem; color: #6b7280; margin-top: 40px; }
       footer a { color: inherit; text-decoration: none; }
       footer a:hover { text-decoration: underline; }
